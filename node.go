@@ -1,5 +1,7 @@
 package feather
 
+import "net/http"
+
 const (
 	isRoot nodeType = iota + 1
 	hasParams
@@ -16,4 +18,14 @@ func (e existingParams) check(param string, path string) {
 	}
 
 	e[param] = struct{}{}
+}
+
+type node struct {
+	path      string
+	indices   string
+	children  []*node
+	handler   http.HandlerFunc
+	priority  uint32
+	nType     nodeType
+	wildChild bool
 }
