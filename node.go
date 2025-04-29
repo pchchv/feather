@@ -158,3 +158,17 @@ func (n *node) incrementChildPriority(pos int) int {
 
 	return newPos
 }
+
+func countParams(path string) (n uint8) {
+	for i := 0; i < len(path) && n < 255; i++ {
+		if path[i] == paramByte || path[i] == wildByte {
+			n++
+		}
+	}
+
+	if n >= 255 {
+		panic("too many parameters defined in path, max is 255")
+	}
+
+	return uint8(n)
+}
