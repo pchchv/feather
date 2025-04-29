@@ -1,6 +1,9 @@
 package feather
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+)
 
 const (
 	isRoot nodeType = iota + 1
@@ -157,6 +160,122 @@ func (n *node) incrementChildPriority(pos int) int {
 	}
 
 	return newPos
+}
+
+// addRoute adds the node with the given handle to the path.
+// Middleware is set here because it needs to transfer all route's middlewares
+// (it is a chain of functions) with its handler to the node.
+func (n *node) addRoute(path string, handler http.HandlerFunc) (lp uint8) {
+	var err error
+	if path == blank {
+		path = basePath
+	}
+
+	existing := make(existingParams)
+	fullPath := path
+	if path, err = url.QueryUnescape(path); err != nil {
+		panic("Qery Unescape Error on path '" + fullPath + "': " + err.Error())
+	}
+
+	fullPath = path
+	n.priority++
+	numParams := countParams(path)
+	lp = numParams
+	// non-empty tree
+	if len(n.path) > 0 || len(n.children) > 0 {
+	walk:
+		for {
+			// find the longest common prefix.
+			// this also implies that the common prefix contains no : or *
+			// since the existing key can't contain those chars.
+			var i int
+			max := min(len(path), len(n.path))
+			for i < max && path[i] == n.path[i] {
+				i++
+			}
+
+			// split edge
+			if i < len(n.path) {
+				child := node{
+					path:      n.path[i:],
+					wildChild: n.wildChild,
+					indices:   n.indices,
+					children:  n.children,
+					handler:   n.handler,
+					priority:  n.priority - 1,
+				}
+				n.children = []*node{&child}
+				// []byte for proper unicode char conversion
+				n.indices = string([]byte{n.path[i]})
+				n.path = path[:i]
+				n.handler = nil
+				n.wildChild = false
+			}
+
+			// make new node a child of this node
+			if i < len(path) {
+				path = path[i:]
+				if n.wildChild {
+					n = n.children[0]
+					n.priority++
+					numParams--
+					existing.check(n.path, fullPath)
+					// check if the wildcard matches
+					if len(path) >= len(n.path) && n.path == path[:len(n.path)] {
+						// check for longer wildcard, e.g. :name and :names
+						if len(n.path) >= len(path) || path[len(n.path)] == slashByte {
+							continue walk
+						}
+					}
+
+					panic("path segment '" + path + "' conflicts with existing wildcard '" + n.path + "' in path '" + fullPath + "'")
+				}
+
+				c := path[0]
+				// slash after param
+				if n.nType == hasParams && c == slashByte && len(n.children) == 1 {
+					n = n.children[0]
+					n.priority++
+					continue walk
+				}
+
+				// check if a child with the next path byte exists
+				for i := 0; i < len(n.indices); i++ {
+					if c == n.indices[i] {
+						i = n.incrementChildPriority(i)
+						n = n.children[i]
+						continue walk
+					}
+				}
+
+				// otherwise insert it
+				if c != paramByte && c != wildByte {
+
+					// []byte for proper unicode char conversion
+					n.indices += string([]byte{c})
+					child := &node{}
+					n.children = append(n.children, child)
+					n.incrementChildPriority(len(n.indices) - 1)
+					n = child
+				}
+
+				n.insertChild(numParams, existing, path, fullPath, handler)
+				return
+			} else if i == len(path) { // make node a (in-path) leaf
+				if n.handler != nil {
+					panic("handlers are already registered for path '" + fullPath + "'")
+				}
+				n.handler = handler
+			}
+
+			return
+		}
+	} else { // empty tree
+		n.insertChild(numParams, existing, path, fullPath, handler)
+		n.nType = isRoot
+	}
+
+	return
 }
 
 func countParams(path string) (n uint8) {
