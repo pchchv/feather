@@ -136,3 +136,25 @@ func (n *node) insertChild(numParams uint8, existing existingParams, path string
 	n.path = path[offset:]
 	n.handler = handler
 }
+
+// incrementChildPriority increments priority of the given child and reorders if necessary.
+func (n *node) incrementChildPriority(pos int) int {
+	n.children[pos].priority++
+	prio := n.children[pos].priority
+	// adjust position (move to front)
+	newPos := pos
+	for newPos > 0 && n.children[newPos-1].priority < prio {
+		// swap node positions
+		n.children[newPos-1], n.children[newPos] = n.children[newPos], n.children[newPos-1]
+		newPos--
+	}
+
+	// build new index char string
+	if newPos != pos {
+		n.indices = n.indices[:newPos] + // unchanged prefix, might be empty
+			n.indices[pos:pos+1] + // the index char we move
+			n.indices[newPos:pos] + n.indices[pos+1:] // rest without char at 'pos'
+	}
+
+	return newPos
+}
