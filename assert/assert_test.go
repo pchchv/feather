@@ -27,3 +27,10 @@ func TestEquals(t *testing.T) {
 	Equal(t, iface, 1)
 	NotEqual(t, iface, iface2)
 }
+
+func CustomErrorHandler(t testing.TB, errs map[string]string, key, expected string) {
+	val, ok := errs[key]
+	EqualSkip(t, 2, ok, true)
+	NotEqualSkip(t, 2, val, nil)
+	EqualSkip(t, 2, val, expected)
+}
