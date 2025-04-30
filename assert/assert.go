@@ -98,7 +98,7 @@ func NotEqualSkip(t testing.TB, skip int, val1, val2 interface{}) {
 }
 
 // MatchRegex validates that value matches the regex,
-// either string or *regex and throws an error with line number
+// either string or *regex and throws an error with line number.
 func MatchRegex(t *testing.T, value string, regex interface{}) {
 	MatchRegexSkip(t, 2, value, regex)
 }
@@ -121,7 +121,7 @@ func MatchRegexSkip(t *testing.T, skip int, value string, regex interface{}) {
 }
 
 // NotMatchRegex validates that value matches the regex,
-// either string or *regex and throws an error with line number
+// either string or *regex and throws an error with line number.
 func NotMatchRegex(t *testing.T, value string, regex interface{}) {
 	NotMatchRegexSkip(t, 2, value, regex)
 }
@@ -141,6 +141,34 @@ func NotMatchRegexSkip(t *testing.T, skip int, value string, regex interface{}) 
 
 		t.FailNow()
 	}
+}
+
+// PanicMatches validates that the panic output of running fn matches the supplied string.
+func PanicMatches(t testing.TB, fn func(), matches string) {
+	PanicMatchesSkip(t, 2, fn, matches)
+}
+
+// PanicMatchesSkip validates that the panic output of running fn matches the
+// supplied string but the skip variable tells PanicMatchesSkip
+// how far back on the stack to report the error.
+// This is a building block to creating your own more complex validation functions.
+func PanicMatchesSkip(t testing.TB, skip int, fn func(), matches string) {
+	_, file, line, _ := runtime.Caller(skip)
+	defer func() {
+		if r := recover(); r != nil {
+			err := fmt.Sprintf("%s", r)
+
+			if err != matches {
+				fmt.Printf("%s:%d Panic...  expected [%s] received [%s]", path.Base(file), line, matches, err)
+				t.FailNow()
+			}
+		} else {
+			fmt.Printf("%s:%d Panic Expected, none found...  expected [%s]", path.Base(file), line, matches)
+			t.FailNow()
+		}
+	}()
+
+	fn()
 }
 
 func regexMatches(regex interface{}, value string) (r *regexp.Regexp, ok bool, err error) {
