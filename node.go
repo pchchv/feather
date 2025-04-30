@@ -278,6 +278,91 @@ func (n *node) addRoute(path string, handler http.HandlerFunc) (lp uint8) {
 	return
 }
 
+// find returns the handle registered with the given path (key).
+func (n *node) find(path string, mux *Mux) (handler http.HandlerFunc, rv *requestVars) {
+walk: // outer loop for walking the tree
+	for {
+		if len(path) > len(n.path) {
+			if path[:len(n.path)] == n.path {
+				path = path[len(n.path):]
+				// if this node does not have a wildcard (param or catchAll) child,
+				// it is possible just look up the next child node and continue to walk down the tree
+				if !n.wildChild {
+					c := path[0]
+					for i := 0; i < len(n.indices); i++ {
+						if c == n.indices[i] {
+							n = n.children[i]
+							continue walk
+						}
+					}
+
+					return
+				}
+
+				// handle wildcard child
+				n = n.children[0]
+				switch n.nType {
+				case hasParams:
+					// find param end (either '/' or path end)
+					var end int
+					for end < len(path) && path[end] != slashByte {
+						end++
+					}
+
+					if rv == nil {
+						rv = mux.pool.Get().(*requestVars)
+						rv.params = rv.params[0:0]
+					}
+
+					// save param value
+					i := len(rv.params)
+					rv.params = rv.params[:i+1] // expand slice within preallocated capacity
+					rv.params[i].key = n.path[1:]
+					rv.params[i].value = path[:end]
+					// is needed to go deeper
+					if end < len(path) {
+						if len(n.children) > 0 {
+							path = path[end:]
+							n = n.children[0]
+							continue walk
+						}
+						return
+					}
+
+					if n.handler != nil {
+						handler = n.handler
+						return
+					}
+
+					return
+				case matchesAny:
+					if rv == nil {
+						rv = mux.pool.Get().(*requestVars)
+						rv.params = rv.params[0:0]
+					}
+
+					// save param value
+					i := len(rv.params)
+					rv.params = rv.params[:i+1] // expand slice within preallocated capacity
+					rv.params[i].key = WildcardParam
+					rv.params[i].value = path[1:]
+					handler = n.handler
+					return
+				}
+			}
+		} else if path == n.path {
+			// must reached the node containing the handle
+			// check if this node has a handle registered
+			if n.handler != nil {
+				handler = n.handler
+			}
+		}
+
+		// nothing found
+		return
+	}
+}
+
 func countParams(path string) (n uint8) {
 	for i := 0; i < len(path) && n < 255; i++ {
 		if path[i] == paramByte || path[i] == wildByte {
