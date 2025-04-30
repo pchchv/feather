@@ -12,3 +12,8 @@ type requestVars struct {
 	params     urlParams
 	formParsed bool
 }
+
+// Params returns the current routes Params.
+func (r *requestVars) URLParam(pname string) string {
+	return r.params.Get(pname)
+}
