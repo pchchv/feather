@@ -97,6 +97,29 @@ func NotEqualSkip(t testing.TB, skip int, val1, val2 interface{}) {
 	}
 }
 
+// MatchRegex validates that value matches the regex,
+// either string or *regex and throws an error with line number
+func MatchRegex(t *testing.T, value string, regex interface{}) {
+	MatchRegexSkip(t, 2, value, regex)
+}
+
+// MatchRegexSkip validates that value matches the regex,
+// either string or *regex and throws an error with line number but the
+// skip variable tells MatchRegexSkip how far back on the stack to report the error.
+// This is a building block to creating your own more complex validation functions.
+func MatchRegexSkip(t *testing.T, skip int, value string, regex interface{}) {
+	if r, ok, err := regexMatches(regex, value); !ok {
+		_, file, line, _ := runtime.Caller(skip)
+		if err != nil {
+			fmt.Printf("%s:%d %v error compiling regex %v\n", path.Base(file), line, value, r.String())
+		} else {
+			fmt.Printf("%s:%d %v does not match regex %v\n", path.Base(file), line, value, r.String())
+		}
+
+		t.FailNow()
+	}
+}
+
 func regexMatches(regex interface{}, value string) (r *regexp.Regexp, ok bool, err error) {
 	// must be a string
 	if r, ok = regex.(*regexp.Regexp); !ok {
