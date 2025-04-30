@@ -1,6 +1,9 @@
 package assert
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestEquals(t *testing.T) {
 	type Test struct {
@@ -33,6 +36,27 @@ func TestRegexMatchAndNotMatch(t *testing.T) {
 	MatchRegex(t, "github.com/pchchv/assert", goodRegex)
 	MatchRegex(t, "/vendor/github.com/pchchv/assert", goodRegex)
 	NotMatchRegex(t, "/vendor/github.com/pchchv/test", goodRegex)
+}
+
+func TestBasicAllGood(t *testing.T) {
+	err := errors.New("my error")
+	NotEqual(t, err, nil)
+	Equal(t, err.Error(), "my error")
+
+	err = nil
+	Equal(t, err, nil)
+	fn := func() {
+		panic("omg omg omg!")
+	}
+
+	PanicMatches(t, func() { fn() }, "omg omg omg!")
+	PanicMatches(t, func() { panic("omg omg omg!") }, "omg omg omg!")
+
+	errs := map[string]string{}
+	errs["Name"] = "User Name Invalid"
+	errs["Email"] = "User Email Invalid"
+	CustomErrorHandler(t, errs, "Name", "User Name Invalid")
+	CustomErrorHandler(t, errs, "Email", "User Email Invalid")
 }
 
 func CustomErrorHandler(t testing.TB, errs map[string]string, key, expected string) {
