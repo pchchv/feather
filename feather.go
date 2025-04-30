@@ -40,3 +40,8 @@ type Mux struct {
 	// handlers take presidence. default true
 	automaticallyHandleOPTIONS bool
 }
+
+type urlParam struct {
+	key   string
+	value string
+}
