@@ -28,6 +28,13 @@ func TestEquals(t *testing.T) {
 	NotEqual(t, iface, iface2)
 }
 
+func TestRegexMatchAndNotMatch(t *testing.T) {
+	goodRegex := "^(.*/vendor/)?github.com/pchchv/assert$"
+	MatchRegex(t, "github.com/pchchv/assert", goodRegex)
+	MatchRegex(t, "/vendor/github.com/pchchv/assert", goodRegex)
+	NotMatchRegex(t, "/vendor/github.com/pchchv/test", goodRegex)
+}
+
 func CustomErrorHandler(t testing.TB, errs map[string]string, key, expected string) {
 	val, ok := errs[key]
 	EqualSkip(t, 2, ok, true)
