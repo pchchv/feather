@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"reflect"
+	"regexp"
 	"runtime"
 	"testing"
 )
@@ -94,4 +95,15 @@ func NotEqualSkip(t testing.TB, skip int, val1, val2 interface{}) {
 		fmt.Printf("%s:%d %v should not be equal %v\n", path.Base(file), line, val1, val2)
 		t.FailNow()
 	}
+}
+
+func regexMatches(regex interface{}, value string) (r *regexp.Regexp, ok bool, err error) {
+	// must be a string
+	if r, ok = regex.(*regexp.Regexp); !ok {
+		if r, err = regexp.Compile(regex.(string)); err != nil {
+			return r, false, err
+		}
+	}
+
+	return r, r.MatchString(value), err
 }
