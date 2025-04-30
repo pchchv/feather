@@ -45,3 +45,5 @@ type urlParam struct {
 	key   string
 	value string
 }
+
+type urlParams []urlParam
