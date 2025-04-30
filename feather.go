@@ -47,3 +47,15 @@ type urlParam struct {
 }
 
 type urlParams []urlParam
+
+// Get returns the URL parameter for the given key, or blank if not found.
+func (p urlParams) Get(key string) (param string) {
+	for i := 0; i < len(p); i++ {
+		if p[i].key == key {
+			param = p[i].value
+			break
+		}
+	}
+
+	return
+}
