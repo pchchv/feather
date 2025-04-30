@@ -78,3 +78,20 @@ func EqualSkip(t testing.TB, skip int, val1, val2 interface{}) {
 		t.FailNow()
 	}
 }
+
+// NotEqual validates that val1 is not equal val2 and throws an error with line number.
+func NotEqual(t testing.TB, val1, val2 interface{}) {
+	NotEqualSkip(t, 2, val1, val2)
+}
+
+// NotEqualSkip validates that val1 is not equal to val2 and
+// throws an error with line number but the skip variable tells NotEqualSkip
+// how far back on the stack to report the error.
+// This is a building block to creating your own more complex validation functions.
+func NotEqualSkip(t testing.TB, skip int, val1, val2 interface{}) {
+	if IsEqual(val1, val2) {
+		_, file, line, _ := runtime.Caller(skip)
+		fmt.Printf("%s:%d %v should not be equal %v\n", path.Base(file), line, val1, val2)
+		t.FailNow()
+	}
+}
