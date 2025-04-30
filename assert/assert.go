@@ -1,6 +1,12 @@
 package assert
 
-import "reflect"
+import (
+	"fmt"
+	"path"
+	"reflect"
+	"runtime"
+	"testing"
+)
 
 // IsEqual returns whether val1 is equal to val2 taking into account Pointers, Interfaces and their underlying types.
 func IsEqual(val1, val2 interface{}) bool {
@@ -54,4 +60,21 @@ CASE3:
 	return reflect.DeepEqual(v1, v2.Interface())
 CASE4:
 	return reflect.DeepEqual(v1, v2)
+}
+
+// Equal validates that val1 is equal to val2 and throws an error with line number.
+func Equal(t testing.TB, val1, val2 interface{}) {
+	EqualSkip(t, 2, val1, val2)
+}
+
+// EqualSkip validates that val1 is equal to val2 and
+// throws an error with line number but the skip variable tells EqualSkip
+// how far back on the stack to report the error.
+// This is a building block to creating your own more complex validation functions.
+func EqualSkip(t testing.TB, skip int, val1, val2 interface{}) {
+	if !IsEqual(val1, val2) {
+		_, file, line, _ := runtime.Caller(skip)
+		fmt.Printf("%s:%d %v does not equal %v\n", path.Base(file), line, val1, val2)
+		t.FailNow()
+	}
 }
