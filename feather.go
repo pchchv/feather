@@ -1,6 +1,7 @@
 package feather
 
 import (
+	"context"
 	"net/http"
 	"sync"
 )
@@ -12,6 +13,26 @@ const (
 	basePath      = "/"
 	wildByte      = '*'
 	blank         = ""
+)
+
+var (
+	default404Handler = func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+
+	methodNotAllowedHandler = func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+
+	automaticOPTIONSHandler = func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	defaultContextIdentifier = &struct {
+		name string
+	}{
+		name: "pure",
+	}
 )
 
 // Middleware is pure's middleware definition.
@@ -39,6 +60,33 @@ type Mux struct {
 	// If enabled automatically handles OPTION requests; manually configured OPTION
 	// handlers take presidence. default true
 	automaticallyHandleOPTIONS bool
+}
+
+// New Creates and returns a new Pure instance.
+func New() *Mux {
+	p := &Mux{
+		routeGroup: routeGroup{
+			middleware: make([]Middleware, 0),
+		},
+		trees:                      make(map[string]*node),
+		mostParams:                 0,
+		http404:                    default404Handler,
+		http405:                    methodNotAllowedHandler,
+		httpOPTIONS:                automaticOPTIONSHandler,
+		redirectTrailingSlash:      true,
+		handleMethodNotAllowed:     false,
+		automaticallyHandleOPTIONS: false,
+	}
+	p.routeGroup.pure = p
+	p.pool.New = func() interface{} {
+		rv := &requestVars{
+			params: make(urlParams, p.mostParams),
+		}
+		rv.ctx = context.WithValue(context.Background(), defaultContextIdentifier, rv)
+		return rv
+	}
+
+	return p
 }
 
 type urlParam struct {
