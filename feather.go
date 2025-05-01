@@ -3,11 +3,13 @@ package feather
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 )
 
 const (
 	WildcardParam = "*wildcard"
+	allowHeader   = "Allow"
 	slashByte     = '/'
 	paramByte     = ':'
 	basePath      = "/"
@@ -123,4 +125,99 @@ func (p *Mux) redirect(method string, to string) (h http.HandlerFunc) {
 	}
 
 	return
+}
+
+// serveHTTP conforms to the http.Handler interface.
+func (p *Mux) serveHTTP(w http.ResponseWriter, r *http.Request) {
+	var rv *requestVars
+	var h http.HandlerFunc
+	tree := p.trees[r.Method]
+	if tree != nil {
+		if h, rv = tree.find(r.URL.Path, p); h == nil {
+			if p.redirectTrailingSlash && len(r.URL.Path) > 1 { // find again all lowercase
+				orig := r.URL.Path
+				lc := strings.ToLower(orig)
+				if lc != r.URL.Path {
+					if h, _ = tree.find(lc, p); h != nil {
+						r.URL.Path = lc
+						h = p.redirect(r.Method, r.URL.String())
+						r.URL.Path = orig
+						goto END
+					}
+				}
+
+				if lc[len(lc)-1:] == basePath {
+					lc = lc[:len(lc)-1]
+				} else {
+					lc = lc + basePath
+				}
+
+				if h, _ = tree.find(lc, p); h != nil {
+					r.URL.Path = lc
+					h = p.redirect(r.Method, r.URL.String())
+					r.URL.Path = orig
+					goto END
+				}
+			}
+		} else {
+			goto END
+		}
+	}
+
+	if p.automaticallyHandleOPTIONS && r.Method == http.MethodOptions {
+		if r.URL.Path == "*" { // check server-wide OPTIONS
+			for m := range p.trees {
+				if m != http.MethodOptions {
+					w.Header().Add(allowHeader, m)
+				}
+			}
+		} else {
+			for m, ctree := range p.trees {
+				if m == r.Method || m == http.MethodOptions {
+					continue
+				}
+
+				if h, _ = ctree.find(r.URL.Path, p); h != nil {
+					w.Header().Add(allowHeader, m)
+				}
+			}
+		}
+
+		w.Header().Add(allowHeader, http.MethodOptions)
+		h = p.httpOPTIONS
+		goto END
+	}
+
+	if p.handleMethodNotAllowed {
+		var found bool
+		for m, ctree := range p.trees {
+			if m != r.Method {
+				if h, _ = ctree.find(r.URL.Path, p); h != nil {
+					w.Header().Add(allowHeader, m)
+					found = true
+				}
+			}
+		}
+
+		if found {
+			h = p.http405
+			goto END
+		}
+	}
+
+	// not found
+	h = p.http404
+
+END:
+	if rv != nil {
+		rv.formParsed = false
+		// store on context
+		r = r.WithContext(rv.ctx)
+	}
+
+	h(w, r)
+
+	if rv != nil {
+		p.pool.Put(rv)
+	}
 }
