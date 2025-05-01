@@ -107,3 +107,20 @@ func (p urlParams) Get(key string) (param string) {
 
 	return
 }
+
+func (p *Mux) redirect(method string, to string) (h http.HandlerFunc) {
+	code := http.StatusMovedPermanently
+	if method != http.MethodGet {
+		code = http.StatusPermanentRedirect
+	}
+
+	h = func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, to, code)
+	}
+
+	for i := len(p.middleware) - 1; i >= 0; i-- {
+		h = p.middleware[i](h)
+	}
+
+	return
+}
