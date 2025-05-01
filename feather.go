@@ -33,11 +33,11 @@ var (
 	defaultContextIdentifier = &struct {
 		name string
 	}{
-		name: "pure",
+		name: "feather",
 	}
 )
 
-// Middleware is pure's middleware definition.
+// Middleware is feather's middleware definition.
 type Middleware func(h http.HandlerFunc) http.HandlerFunc
 
 // Mux is the main request multiplexer.
@@ -64,7 +64,7 @@ type Mux struct {
 	automaticallyHandleOPTIONS bool
 }
 
-// New Creates and returns a new Pure instance.
+// New Creates and returns a new feather instance.
 func New() *Mux {
 	p := &Mux{
 		routeGroup: routeGroup{
@@ -79,7 +79,7 @@ func New() *Mux {
 		handleMethodNotAllowed:     false,
 		automaticallyHandleOPTIONS: false,
 	}
-	p.routeGroup.pure = p
+	p.routeGroup.feather = p
 	p.pool.New = func() interface{} {
 		rv := &requestVars{
 			params: make(urlParams, p.mostParams),

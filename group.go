@@ -4,5 +4,5 @@ package feather
 type routeGroup struct {
 	prefix     string
 	middleware []Middleware
-	pure       *Mux
+	feather    *Mux
 }
