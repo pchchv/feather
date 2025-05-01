@@ -110,6 +110,20 @@ func (p urlParams) Get(key string) (param string) {
 	return
 }
 
+// Serve returns an http.Handler to be used.
+func (p *Mux) Serve() http.Handler {
+	// is reserved for any logic that must occur before service begins,
+	// i.e. although this router does not use priority to determine route order,
+	// it is possible to add tree node sorting here
+	return http.HandlerFunc(p.serveHTTP)
+}
+
+// SetRedirectTrailingSlash tells feather whether to attempt to fix the URL by trying to find it.
+// lowercase -> with or without slash -> 404
+func (p *Mux) SetRedirectTrailingSlash(set bool) {
+	p.redirectTrailingSlash = set
+}
+
 func (p *Mux) redirect(method string, to string) (h http.HandlerFunc) {
 	code := http.StatusMovedPermanently
 	if method != http.MethodGet {
