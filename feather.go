@@ -124,6 +124,41 @@ func (p *Mux) SetRedirectTrailingSlash(set bool) {
 	p.redirectTrailingSlash = set
 }
 
+// Register404 allows to override the handler function for routes not found.
+// Runs after a route is not found, even after redirecting with the trailing slash.
+func (p *Mux) Register404(notFound http.HandlerFunc, middleware ...Middleware) {
+	h := notFound
+	for i := len(middleware) - 1; i >= 0; i-- {
+		h = middleware[i](h)
+	}
+
+	p.http404 = h
+}
+
+// RegisterAutomaticOPTIONS specifies feather whether OPTION requests should be handled automatically.
+// Manually configured OPTION handlers take precedence.
+// By default, true.
+func (p *Mux) RegisterAutomaticOPTIONS(middleware ...Middleware) {
+	p.automaticallyHandleOPTIONS = true
+	h := automaticOPTIONSHandler
+	for i := len(middleware) - 1; i >= 0; i-- {
+		h = middleware[i](h)
+	}
+
+	p.httpOPTIONS = h
+}
+
+// RegisterMethodNotAllowed indicates feather whether the http 405 Method Not Allowed status code should be processed.
+func (p *Mux) RegisterMethodNotAllowed(middleware ...Middleware) {
+	p.handleMethodNotAllowed = true
+	h := methodNotAllowedHandler
+	for i := len(middleware) - 1; i >= 0; i-- {
+		h = middleware[i](h)
+	}
+
+	p.http405 = h
+}
+
 func (p *Mux) redirect(method string, to string) (h http.HandlerFunc) {
 	code := http.StatusMovedPermanently
 	if method != http.MethodGet {
