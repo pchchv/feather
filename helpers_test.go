@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -51,4 +52,36 @@ func TestNoRequestVars(t *testing.T) {
 	p.Get("/home", reqVars)
 	code, _ := request(http.MethodGet, "/home", p)
 	Equal(t, code, http.StatusOK)
+}
+
+// Gzip2 returns a middleware which compresses HTTP response using gzip compression scheme.
+func Gzip2(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var gz *gzipWriter
+		var gzr *gzip.Writer
+		w.Header().Add(varyHeader, acceptEncodingHeader)
+		if strings.Contains(r.Header.Get(acceptEncodingHeader), "gzip") {
+			gz = gzipPool.Get().(*gzipWriter)
+			gz.sniffComplete = false
+			gzr = gz.Writer.(*gzip.Writer)
+			gzr.Reset(w)
+			gz.ResponseWriter = w
+
+			w.Header().Set(acceptEncodingHeader, "gzip")
+
+			w = gz
+			defer func() {
+				if !gz.sniffComplete {
+					// have to reset response to it's pristine state when nothing is written to body
+					w.Header().Del(acceptEncodingHeader)
+					gzr.Reset(io.Discard)
+				}
+
+				gzr.Close()
+				gzipPool.Put(gz)
+			}()
+		}
+
+		next(w, r)
+	}
 }
