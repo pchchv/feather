@@ -21,6 +21,14 @@ type IRoutes interface {
 	Trace(string, http.HandlerFunc)
 }
 
+// IRouteGroup interface for router group.
+type IRouteGroup interface {
+	IRoutes
+	GroupWithNone(prefix string) IRouteGroup
+	GroupWithMore(prefix string, middleware ...Middleware) IRouteGroup
+	Group(prefix string) IRouteGroup
+}
+
 // routeGroup containing all fields and methods for use.
 type routeGroup struct {
 	prefix     string
