@@ -13,6 +13,26 @@ type routeGroup struct {
 	feather    *Mux
 }
 
+// Get adds a GET route & handler to the router.
+func (g *routeGroup) Get(path string, h http.HandlerFunc) {
+	g.handle(http.MethodGet, path, h)
+}
+
+// Delete adds a DELETE route & handler to the router.
+func (g *routeGroup) Delete(path string, h http.HandlerFunc) {
+	g.handle(http.MethodDelete, path, h)
+}
+
+// Post adds a POST route & handler to the router.
+func (g *routeGroup) Post(path string, h http.HandlerFunc) {
+	g.handle(http.MethodPost, path, h)
+}
+
+// Put adds a PUT route & handler to the router.
+func (g *routeGroup) Put(path string, h http.HandlerFunc) {
+	g.handle(http.MethodPut, path, h)
+}
+
 func (g *routeGroup) handle(method string, path string, handler http.HandlerFunc) {
 	if i := strings.Index(path, "//"); i != -1 {
 		panic("Bad path '" + path + "' contains duplicate // at index:" + strconv.Itoa(i))
