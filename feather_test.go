@@ -22,6 +22,16 @@ var (
 	}
 )
 
+type route struct {
+	method string
+	path   string
+}
+
+type zombie struct {
+	ID   int    `json:"id"   xml:"id"`
+	Name string `json:"name" xml:"name"`
+}
+
 type closeNotifyingRecorder struct {
 	*httptest.ResponseRecorder
 	closed chan bool
