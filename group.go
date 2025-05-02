@@ -53,6 +53,29 @@ func (g *routeGroup) Trace(path string, h http.HandlerFunc) {
 	g.handle(http.MethodTrace, path, h)
 }
 
+// Handle allows for any method to be registered with the given route & handler.
+// Allows for non standard methods to be used like CalDavs PROPFIND and so forth.
+func (g *routeGroup) Handle(method string, path string, h http.HandlerFunc) {
+	g.handle(method, path, h)
+}
+
+// Head adds a HEAD route & handler to the router.
+func (g *routeGroup) Head(path string, h http.HandlerFunc) {
+	g.handle(http.MethodHead, path, h)
+}
+
+// Connect adds a CONNECT route & handler to the router.
+func (g *routeGroup) Connect(path string, h http.HandlerFunc) {
+	g.handle(http.MethodConnect, path, h)
+}
+
+// Match adds a route & handler to the router for multiple HTTP methods provided.
+func (g *routeGroup) Match(methods []string, path string, h http.HandlerFunc) {
+	for _, m := range methods {
+		g.handle(m, path, h)
+	}
+}
+
 func (g *routeGroup) handle(method string, path string, handler http.HandlerFunc) {
 	if i := strings.Index(path, "//"); i != -1 {
 		panic("Bad path '" + path + "' contains duplicate // at index:" + strconv.Itoa(i))
