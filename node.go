@@ -174,7 +174,7 @@ func (n *node) addRoute(path string, handler http.HandlerFunc) (lp uint8) {
 	existing := make(existingParams)
 	fullPath := path
 	if path, err = url.QueryUnescape(path); err != nil {
-		panic("Qery Unescape Error on path '" + fullPath + "': " + err.Error())
+		panic("Query Unescape Error on path '" + fullPath + "': " + err.Error())
 	}
 
 	fullPath = path
