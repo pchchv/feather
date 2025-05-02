@@ -1,6 +1,10 @@
 package feather
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 )
@@ -29,4 +33,47 @@ func (c *closeNotifyingRecorder) Close() {
 
 func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
 	return c.closed
+}
+
+func request(method, path string, p *Mux) (int, string) {
+	r, _ := http.NewRequest(method, path, nil)
+	w := &closeNotifyingRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+	hf := p.Serve()
+	hf.ServeHTTP(w, r)
+	return w.Code, w.Body.String()
+}
+
+func requestMultiPart(method string, url string, p *Mux) (int, string) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "test.txt")
+	if err != nil {
+		fmt.Println("ERR FILE:", err)
+	}
+
+	buff := bytes.NewBufferString("FILE TEST DATA")
+	if _, err = io.Copy(part, buff); err != nil {
+		fmt.Println("ERR COPY:", err)
+	}
+
+	if err = writer.WriteField("username", "pchchv"); err != nil {
+		fmt.Println("ERR:", err)
+	}
+
+	if err = writer.Close(); err != nil {
+		fmt.Println("ERR:", err)
+	}
+
+	r, _ := http.NewRequest(method, url, body)
+	r.Header.Set(contentTypeHeader, writer.FormDataContentType())
+	wr := &closeNotifyingRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+	hf := p.Serve()
+	hf.ServeHTTP(wr, r)
+	return wr.Code, wr.Body.String()
 }

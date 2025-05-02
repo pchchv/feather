@@ -8,13 +8,14 @@ import (
 )
 
 const (
-	WildcardParam = "*wildcard"
-	allowHeader   = "Allow"
-	slashByte     = '/'
-	paramByte     = ':'
-	basePath      = "/"
-	wildByte      = '*'
-	blank         = ""
+	WildcardParam     = "*wildcard"
+	allowHeader       = "Allow"
+	contentTypeHeader = "Content-Type"
+	slashByte         = '/'
+	paramByte         = ':'
+	basePath          = "/"
+	wildByte          = '*'
+	blank             = ""
 )
 
 var (
