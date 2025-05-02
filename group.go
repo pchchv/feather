@@ -99,6 +99,27 @@ func (g *routeGroup) Match(methods []string, path string, h http.HandlerFunc) {
 	}
 }
 
+// GroupWithNone creates a new sub router with specified prefix and no middleware attached.
+func (g *routeGroup) GroupWithNone(prefix string) IRouteGroup {
+	return &routeGroup{
+		prefix:     g.prefix + prefix,
+		feather:    g.feather,
+		middleware: make([]Middleware, 0),
+	}
+}
+
+// GroupWithMore creates a new sub router with specified prefix, retains existing middleware and adds new middleware.
+func (g *routeGroup) GroupWithMore(prefix string, middleware ...Middleware) IRouteGroup {
+	rg := &routeGroup{
+		prefix:     g.prefix + prefix,
+		feather:    g.feather,
+		middleware: make([]Middleware, len(g.middleware)),
+	}
+	copy(rg.middleware, g.middleware)
+	rg.Use(middleware...)
+	return rg
+}
+
 func (g *routeGroup) handle(method string, path string, handler http.HandlerFunc) {
 	if i := strings.Index(path, "//"); i != -1 {
 		panic("Bad path '" + path + "' contains duplicate // at index:" + strconv.Itoa(i))
