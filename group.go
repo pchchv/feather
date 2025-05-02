@@ -6,6 +6,21 @@ import (
 	"strings"
 )
 
+// IRoutes interface for routes.
+type IRoutes interface {
+	Use(...Middleware)
+	Any(string, http.HandlerFunc)
+	Get(string, http.HandlerFunc)
+	Post(string, http.HandlerFunc)
+	Delete(string, http.HandlerFunc)
+	Patch(string, http.HandlerFunc)
+	Put(string, http.HandlerFunc)
+	Options(string, http.HandlerFunc)
+	Head(string, http.HandlerFunc)
+	Connect(string, http.HandlerFunc)
+	Trace(string, http.HandlerFunc)
+}
+
 // routeGroup containing all fields and methods for use.
 type routeGroup struct {
 	prefix     string
