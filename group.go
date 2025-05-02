@@ -33,6 +33,26 @@ func (g *routeGroup) Put(path string, h http.HandlerFunc) {
 	g.handle(http.MethodPut, path, h)
 }
 
+// Patch adds a PATCH route & handler to the router.
+func (g *routeGroup) Patch(path string, h http.HandlerFunc) {
+	g.handle(http.MethodPatch, path, h)
+}
+
+// Options adds an OPTIONS route & handler to the router.
+func (g *routeGroup) Options(path string, h http.HandlerFunc) {
+	g.handle(http.MethodOptions, path, h)
+}
+
+// Use adds a middleware handler to the group middleware chain.
+func (g *routeGroup) Use(m ...Middleware) {
+	g.middleware = append(g.middleware, m...)
+}
+
+// Trace adds a TRACE route & handler to the router.
+func (g *routeGroup) Trace(path string, h http.HandlerFunc) {
+	g.handle(http.MethodTrace, path, h)
+}
+
 func (g *routeGroup) handle(method string, path string, handler http.HandlerFunc) {
 	if i := strings.Index(path, "//"); i != -1 {
 		panic("Bad path '" + path + "' contains duplicate // at index:" + strconv.Itoa(i))
