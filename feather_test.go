@@ -1,6 +1,9 @@
 package feather
 
-import "net/http"
+import (
+	"net/http"
+	"net/http/httptest"
+)
 
 var (
 	defaultHandler = func(w http.ResponseWriter, r *http.Request) {
@@ -14,3 +17,16 @@ var (
 		}
 	}
 )
+
+type closeNotifyingRecorder struct {
+	*httptest.ResponseRecorder
+	closed chan bool
+}
+
+func (c *closeNotifyingRecorder) Close() {
+	c.closed <- true
+}
+
+func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
+	return c.closed
+}
