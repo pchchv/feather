@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+var _ IRouteGroup = &routeGroup{}
+
 // IRoutes interface for routes.
 type IRoutes interface {
 	Use(...Middleware)
@@ -118,6 +120,30 @@ func (g *routeGroup) GroupWithMore(prefix string, middleware ...Middleware) IRou
 	copy(rg.middleware, g.middleware)
 	rg.Use(middleware...)
 	return rg
+}
+
+// Group creates a new sub router with specified prefix and retains existing middleware.
+func (g *routeGroup) Group(prefix string) IRouteGroup {
+	rg := &routeGroup{
+		prefix:     g.prefix + prefix,
+		feather:    g.feather,
+		middleware: make([]Middleware, len(g.middleware)),
+	}
+	copy(rg.middleware, g.middleware)
+	return rg
+}
+
+// Any adds a route & handler to the router for all HTTP methods.
+func (g *routeGroup) Any(path string, h http.HandlerFunc) {
+	g.Connect(path, h)
+	g.Delete(path, h)
+	g.Get(path, h)
+	g.Head(path, h)
+	g.Options(path, h)
+	g.Patch(path, h)
+	g.Post(path, h)
+	g.Put(path, h)
+	g.Trace(path, h)
 }
 
 func (g *routeGroup) handle(method string, path string, handler http.HandlerFunc) {
