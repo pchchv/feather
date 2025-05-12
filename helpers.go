@@ -1,6 +1,20 @@
 package feather
 
-import "net/http"
+import (
+	"io"
+	"mime"
+	"net/http"
+	"path/filepath"
+	"strings"
+)
+
+const (
+	UTF8                   = "utf-8"
+	charsetUTF8            = "; charset=" + UTF8
+	textMarkdown           = textMarkdownNoCharset + charsetUTF8
+	textMarkdownNoCharset  = "text/markdown"
+	applicationOctetStream = "application/octet-stream"
+)
 
 // RequestVars returns the request scoped variables tracked by feather.
 func RequestVars(r *http.Request) ReqVars {
@@ -52,4 +66,28 @@ func ParseMultipartForm(r *http.Request, maxMemory int64) error {
 	}
 
 	return nil
+}
+
+func detectContentType(filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if t := mime.TypeByExtension(ext); t != "" {
+		return t
+	}
+
+	switch ext {
+	case ".md":
+		return textMarkdown
+	default:
+		return applicationOctetStream
+	}
+}
+
+// attachment is a helper method for returning an attachment file
+// to be downloaded, if you with to open inline see function Inline
+func attachment(w http.ResponseWriter, r io.Reader, filename string) (err error) {
+	w.Header().Set(contentDispositionHeader, "attachment;filename="+filename)
+	w.Header().Set(contentTypeHeader, detectContentType(filename))
+	w.WriteHeader(http.StatusOK)
+	_, err = io.Copy(w, r)
+	return
 }
