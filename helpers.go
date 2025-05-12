@@ -68,6 +68,18 @@ func ParseMultipartForm(r *http.Request, maxMemory int64) error {
 	return nil
 }
 
+// Attachment is a helper method for returning an attachement file to be downloaded,
+// if a line needs to be opened, see the Inline function.
+func Attachment(w http.ResponseWriter, r io.Reader, filename string) (err error) {
+	return attachment(w, r, filename)
+}
+
+// AcceptedLanguages returns an array of accepted languages denoted by
+// the Accept-Language header sent by the browser.
+func AcceptedLanguages(r *http.Request) (languages []string) {
+	return acceptedLanguages(r)
+}
+
 func detectContentType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if t := mime.TypeByExtension(ext); t != "" {
