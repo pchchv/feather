@@ -3,6 +3,7 @@ package feather
 import (
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -110,6 +111,43 @@ func AcceptedLanguages(r *http.Request) (languages []string) {
 // EncodeToURLValues encodes a struct or field into a set of url.Values.
 func EncodeToURLValues(v interface{}) (url.Values, error) {
 	return DefaultFormEncoder.Encode(v)
+}
+
+// Inline is a helper method for returning a file inline to be rendered/opened by the browser.
+func Inline(w http.ResponseWriter, r io.Reader, filename string) (err error) {
+	w.Header().Set(contentDispositionHeader, "inline;filename="+filename)
+	w.Header().Set(contentTypeHeader, detectContentType(filename))
+	w.WriteHeader(http.StatusOK)
+	_, err = io.Copy(w, r)
+	return
+}
+
+// ClientIP implements a best effort algorithm to return the real client IP,
+// it parses X-Real-IP and X-Forwarded-For in order to
+// work properly with reverse-proxies such us: nginx or haproxy.
+func ClientIP(r *http.Request) (clientIP string) {
+	values := r.Header[xRealIPHeader]
+	if len(values) > 0 {
+		clientIP = strings.TrimSpace(values[0])
+		if clientIP != "" {
+			return
+		}
+	}
+
+	if values = r.Header[xForwardedForHeader]; len(values) > 0 {
+		clientIP = values[0]
+		if index := strings.IndexByte(clientIP, ','); index >= 0 {
+			clientIP = clientIP[0:index]
+		}
+
+		clientIP = strings.TrimSpace(clientIP)
+		if clientIP != "" {
+			return
+		}
+	}
+
+	clientIP, _, _ = net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+	return
 }
 
 func detectContentType(filename string) string {

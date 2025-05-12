@@ -14,6 +14,8 @@ const (
 	acceptedLanguageHeader   = "Accept-Language"
 	contentTypeHeader        = "Content-Type"
 	contentDispositionHeader = "Content-Disposition"
+	xRealIPHeader            = "X-Real-Ip"
+	xForwardedForHeader      = "X-Forwarded-For"
 	varyHeader               = "Vary"
 	slashByte                = '/'
 	paramByte                = ':'
