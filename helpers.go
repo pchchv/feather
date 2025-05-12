@@ -107,6 +107,11 @@ func AcceptedLanguages(r *http.Request) (languages []string) {
 	return
 }
 
+// EncodeToURLValues encodes a struct or field into a set of url.Values.
+func EncodeToURLValues(v interface{}) (url.Values, error) {
+	return DefaultFormEncoder.Encode(v)
+}
+
 func detectContentType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if t := mime.TypeByExtension(ext); t != "" {
