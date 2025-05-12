@@ -82,12 +82,30 @@ func detectContentType(filename string) string {
 	}
 }
 
-// attachment is a helper method for returning an attachment file
-// to be downloaded, if you with to open inline see function Inline
+// attachment is a helper method for returning an attachment file to be downloaded,
+// if a line needs to be opened, see the Inline function.
 func attachment(w http.ResponseWriter, r io.Reader, filename string) (err error) {
 	w.Header().Set(contentDispositionHeader, "attachment;filename="+filename)
 	w.Header().Set(contentTypeHeader, detectContentType(filename))
 	w.WriteHeader(http.StatusOK)
 	_, err = io.Copy(w, r)
+	return
+}
+
+// acceptedLanguages returns an array of accepted languages denoted by the Accept-Language header sent by the browser.
+func acceptedLanguages(r *http.Request) (languages []string) {
+	accepted := r.Header.Get(acceptedLanguageHeader)
+	if accepted == "" {
+		return
+	}
+
+	options := strings.Split(accepted, ",")
+	l := len(options)
+	languages = make([]string, l)
+	for i := 0; i < l; i++ {
+		locale := strings.SplitN(options[i], ";", 2)
+		languages[i] = strings.Trim(locale[0], " ")
+	}
+
 	return
 }
