@@ -6,6 +6,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -118,4 +120,73 @@ func TestBadParseMultiPartForm(t *testing.T) {
 	code, body := requestMultiPart(http.MethodGet, "/users/16?test=%2f%%efg", p)
 	Equal(t, code, http.StatusOK)
 	Equal(t, body, "invalid URL escape \"%%e\"")
+}
+
+func TestAcceptedLanguages(t *testing.T) {
+	req, _ := http.NewRequest("POST", "/", nil)
+	req.Header.Set(acceptedLanguageHeader, "da, en-GB;q=0.8, en;q=0.7")
+	languages := AcceptedLanguages(req)
+	Equal(t, languages[0], "da")
+	Equal(t, languages[1], "en-GB")
+	Equal(t, languages[2], "en")
+
+	req.Header.Del(acceptedLanguageHeader)
+	languages = AcceptedLanguages(req)
+	Equal(t, len(languages), 0)
+
+	req.Header.Set(acceptedLanguageHeader, "")
+	languages = AcceptedLanguages(req)
+	Equal(t, len(languages), 0)
+}
+
+func TestAttachment(t *testing.T) {
+	p := New()
+	p.Get("/dl", func(w http.ResponseWriter, r *http.Request) {
+		f, _ := os.Open("logo.png")
+		if err := Attachment(w, f, "logo.png"); err != nil {
+			panic(err)
+		}
+	})
+	p.Get("/dl-unknown-type", func(w http.ResponseWriter, r *http.Request) {
+		f, _ := os.Open("logo.png")
+		if err := Attachment(w, f, "logo"); err != nil {
+			panic(err)
+		}
+	})
+	r, _ := http.NewRequest(http.MethodGet, "/dl", nil)
+	w := &closeNotifyingRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+	hf := p.Serve()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentDispositionHeader), "attachment;filename=logo.png")
+	Equal(t, w.Header().Get(contentTypeHeader), "image/png")
+	Equal(t, w.Body.Len(), 20797)
+
+	r, _ = http.NewRequest(http.MethodGet, "/dl-unknown-type", nil)
+	w = &closeNotifyingRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+	hf = p.Serve()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentDispositionHeader), "attachment;filename=logo")
+	Equal(t, w.Header().Get(contentTypeHeader), "application/octet-stream")
+	Equal(t, w.Body.Len(), 20797)
+}
+
+func TestEncodeToURLValues(t *testing.T) {
+	type Test struct {
+		Domain string `form:"domain"`
+		Next   string `form:"next"`
+	}
+
+	s := Test{Domain: "company.org", Next: "NIDEJ89#(@#NWJK"}
+	values, err := EncodeToURLValues(s)
+	Equal(t, err, nil)
+	Equal(t, len(values), 2)
+	Equal(t, values.Encode(), "domain=company.org&next=NIDEJ89%23%28%40%23NWJK")
 }
