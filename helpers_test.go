@@ -85,3 +85,37 @@ func Gzip2(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
+
+func TestBadParseForm(t *testing.T) {
+	// successful scenarios tested under TestDecode
+	p := New()
+	p.Get("/users/:id", func(w http.ResponseWriter, r *http.Request) {
+		if err := ParseForm(r); err != nil {
+			if _, err = w.Write([]byte(err.Error())); err != nil {
+				panic(err)
+			}
+			return
+		}
+	})
+
+	code, body := request(http.MethodGet, "/users/16?test=%2f%%efg", p)
+	Equal(t, code, http.StatusOK)
+	Equal(t, body, "invalid URL escape \"%%e\"")
+}
+
+func TestBadParseMultiPartForm(t *testing.T) {
+	// successful scenarios tested under TestDecode
+	p := New()
+	p.Get("/users/:id", func(w http.ResponseWriter, r *http.Request) {
+		if e := ParseMultipartForm(r, 10<<5); e != nil {
+			if _, err := w.Write([]byte(e.Error())); err != nil {
+				panic(e)
+			}
+			return
+		}
+	})
+
+	code, body := requestMultiPart(http.MethodGet, "/users/16?test=%2f%%efg", p)
+	Equal(t, code, http.StatusOK)
+	Equal(t, body, "invalid URL escape \"%%e\"")
+}
