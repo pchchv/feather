@@ -4,8 +4,11 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
+
+	"github.com/pchchv/form"
 )
 
 const (
@@ -15,6 +18,13 @@ const (
 	textMarkdownNoCharset  = "text/markdown"
 	applicationOctetStream = "application/octet-stream"
 )
+
+var DefaultFormEncoder FormEncoder = form.NewEncoder()
+
+// FormEncoder is the type used for encoding form data
+type FormEncoder interface {
+	Encode(interface{}) (url.Values, error)
+}
 
 // RequestVars returns the request scoped variables tracked by feather.
 func RequestVars(r *http.Request) ReqVars {
