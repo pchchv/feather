@@ -220,6 +220,24 @@ func JSONP(w http.ResponseWriter, status int, i interface{}, callback string) er
 	return err
 }
 
+// JSONBytes returns provided JSON response with status code.
+func JSONBytes(w http.ResponseWriter, status int, b []byte) (err error) {
+	w.Header().Set(contentTypeHeader, applicationJSON)
+	w.WriteHeader(status)
+	_, err = w.Write(b)
+	return err
+}
+
+// JSONStream uses json.Encoder to stream the JSON reponse body.
+//
+// This differs from the JSON helper which unmarshalls into memory first allowing the
+// capture of JSON encoding errors.
+func JSONStream(w http.ResponseWriter, status int, i interface{}) error {
+	w.Header().Set(contentTypeHeader, applicationJSON)
+	w.WriteHeader(status)
+	return json.NewEncoder(w).Encode(i)
+}
+
 func detectContentType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if t := mime.TypeByExtension(ext); t != "" {
