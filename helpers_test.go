@@ -190,3 +190,59 @@ func TestEncodeToURLValues(t *testing.T) {
 	Equal(t, len(values), 2)
 	Equal(t, values.Encode(), "domain=company.org&next=NIDEJ89%23%28%40%23NWJK")
 }
+
+func TestInline(t *testing.T) {
+	p := New()
+	p.Get("/dl-inline", func(w http.ResponseWriter, r *http.Request) {
+		f, _ := os.Open("logo.png")
+		if err := Inline(w, f, "logo.png"); err != nil {
+			panic(err)
+		}
+	})
+	p.Get("/dl-unknown-type-inline", func(w http.ResponseWriter, r *http.Request) {
+		f, _ := os.Open("logo.png")
+		if err := Inline(w, f, "logo"); err != nil {
+			panic(err)
+		}
+	})
+	r, _ := http.NewRequest(http.MethodGet, "/dl-inline", nil)
+	w := &closeNotifyingRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+	hf := p.Serve()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentDispositionHeader), "inline;filename=logo.png")
+	Equal(t, w.Header().Get(contentTypeHeader), "image/png")
+	Equal(t, w.Body.Len(), 20797)
+
+	r, _ = http.NewRequest(http.MethodGet, "/dl-unknown-type-inline", nil)
+	w = &closeNotifyingRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+	hf = p.Serve()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentDispositionHeader), "inline;filename=logo")
+	Equal(t, w.Header().Get(contentTypeHeader), "application/octet-stream")
+	Equal(t, w.Body.Len(), 20797)
+}
+
+func TestClientIP(t *testing.T) {
+	req, _ := http.NewRequest("POST", "/", nil)
+	req.Header.Set("X-Real-IP", " 10.10.10.10  ")
+	req.Header.Set("X-Forwarded-For", "  20.20.20.20, 30.30.30.30")
+	req.RemoteAddr = "  40.40.40.40:42123 "
+	Equal(t, ClientIP(req), "10.10.10.10")
+
+	req.Header.Del("X-Real-IP")
+	Equal(t, ClientIP(req), "20.20.20.20")
+
+	req.Header.Set("X-Forwarded-For", "30.30.30.30  ")
+	Equal(t, ClientIP(req), "30.30.30.30")
+
+	req.Header.Del("X-Forwarded-For")
+	Equal(t, ClientIP(req), "40.40.40.40")
+}
