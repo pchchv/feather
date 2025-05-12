@@ -3,6 +3,7 @@ package feather
 import (
 	"bufio"
 	"compress/gzip"
+	"encoding/json"
 	"encoding/xml"
 	"io"
 	"net"
@@ -290,4 +291,84 @@ func TestXML(t *testing.T) {
 	Equal(t, w.Code, http.StatusInternalServerError)
 	Equal(t, w.Header().Get(contentTypeHeader), textPlain)
 	Equal(t, w.Body.String(), "xml: unsupported type: func()\n")
+}
+
+func TestJSON(t *testing.T) {
+	jsonData := `{"id":1,"name":"Patient Zero"}`
+	callbackFunc := "CallbackFunc"
+	p := New()
+	p.Use(Gzip2)
+	p.Get("/jsonstream", func(w http.ResponseWriter, r *http.Request) {
+		if err := JSONStream(w, http.StatusOK, zombie{1, "Patient Zero"}); err != nil {
+			panic(err)
+		}
+	})
+	p.Get("/json", func(w http.ResponseWriter, r *http.Request) {
+		if err := JSON(w, http.StatusOK, zombie{1, "Patient Zero"}); err != nil {
+			panic(err)
+		}
+	})
+	p.Get("/badjson", func(w http.ResponseWriter, r *http.Request) {
+		if err := JSON(w, http.StatusOK, func() {}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	p.Get("/jsonbytes", func(w http.ResponseWriter, r *http.Request) {
+		b, _ := json.Marshal("Patient Zero")
+		if err := JSONBytes(w, http.StatusOK, b); err != nil {
+			panic(err)
+		}
+	})
+	p.Get("/jsonp", func(w http.ResponseWriter, r *http.Request) {
+		if err := JSONP(w, http.StatusOK, zombie{1, "Patient Zero"}, callbackFunc); err != nil {
+			panic(err)
+		}
+	})
+	p.Get("/badjsonp", func(w http.ResponseWriter, r *http.Request) {
+		if err := JSONP(w, http.StatusOK, func() {}, callbackFunc); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	hf := p.Serve()
+	r, _ := http.NewRequest(http.MethodGet, "/jsonstream", nil)
+	w := httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentTypeHeader), applicationJSON)
+	Equal(t, w.Body.String(), jsonData+"\n")
+
+	r, _ = http.NewRequest(http.MethodGet, "/json", nil)
+	w = httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentTypeHeader), applicationJSON)
+	Equal(t, w.Body.String(), jsonData)
+
+	r, _ = http.NewRequest(http.MethodGet, "/badjson", nil)
+	w = httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusInternalServerError)
+	Equal(t, w.Header().Get(contentTypeHeader), textPlain)
+	Equal(t, w.Body.String(), "json: unsupported type: func()\n")
+
+	r, _ = http.NewRequest(http.MethodGet, "/jsonbytes", nil)
+	w = httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentTypeHeader), applicationJSON)
+	Equal(t, w.Body.String(), "\"Patient Zero\"")
+
+	r, _ = http.NewRequest(http.MethodGet, "/jsonp", nil)
+	w = httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentTypeHeader), applicationJSON)
+	Equal(t, w.Body.String(), callbackFunc+"("+jsonData+");")
+
+	r, _ = http.NewRequest(http.MethodGet, "/badjsonp", nil)
+	w = httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusInternalServerError)
+	Equal(t, w.Header().Get(contentTypeHeader), textPlain)
+	Equal(t, w.Body.String(), "json: unsupported type: func()\n")
 }
