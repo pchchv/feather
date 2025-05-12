@@ -14,13 +14,15 @@ import (
 )
 
 const (
-	utf8                    = "utf-8"
-	charsetUTF8             = "; charset=" + utf8
-	textMarkdown            = textMarkdownNoCharset + charsetUTF8
-	textMarkdownNoCharset   = "text/markdown"
+	applicationXML          = applicationXMLNoCharset + charsetUTF8
 	applicationOctetStream  = "application/octet-stream"
 	applicationXMLNoCharset = "application/xml"
-	applicationXML          = applicationXMLNoCharset + charsetUTF8
+	charsetUTF8             = "; charset=" + utf8
+	textPlain               = textPlainNoCharset + charsetUTF8
+	textMarkdown            = textMarkdownNoCharset + charsetUTF8
+	textPlainNoCharset      = "text/plain"
+	textMarkdownNoCharset   = "text/markdown"
+	utf8                    = "utf-8"
 )
 
 var (

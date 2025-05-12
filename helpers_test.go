@@ -3,6 +3,7 @@ package feather
 import (
 	"bufio"
 	"compress/gzip"
+	"encoding/xml"
 	"io"
 	"net"
 	"net/http"
@@ -245,4 +246,48 @@ func TestClientIP(t *testing.T) {
 
 	req.Header.Del("X-Forwarded-For")
 	Equal(t, ClientIP(req), "40.40.40.40")
+}
+
+func TestXML(t *testing.T) {
+	xmlData := `<zombie><id>1</id><name>Patient Zero</name></zombie>`
+	p := New()
+	p.Use(Gzip2)
+	p.Get("/xml", func(w http.ResponseWriter, r *http.Request) {
+		if err := XML(w, http.StatusOK, zombie{1, "Patient Zero"}); err != nil {
+			panic(err)
+		}
+	})
+	p.Get("/badxml", func(w http.ResponseWriter, r *http.Request) {
+		if err := XML(w, http.StatusOK, func() {}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	p.Get("/xmlbytes", func(w http.ResponseWriter, r *http.Request) {
+		b, _ := xml.Marshal(zombie{1, "Patient Zero"})
+		if err := XMLBytes(w, http.StatusOK, b); err != nil {
+			panic(err)
+		}
+	})
+
+	hf := p.Serve()
+	r, _ := http.NewRequest(http.MethodGet, "/xml", nil)
+	w := httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentTypeHeader), applicationXML)
+	Equal(t, w.Body.String(), xml.Header+xmlData)
+
+	r, _ = http.NewRequest(http.MethodGet, "/xmlbytes", nil)
+	w = httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, w.Header().Get(contentTypeHeader), applicationXML)
+	Equal(t, w.Body.String(), xml.Header+xmlData)
+
+	r, _ = http.NewRequest(http.MethodGet, "/badxml", nil)
+	w = httptest.NewRecorder()
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusInternalServerError)
+	Equal(t, w.Header().Get(contentTypeHeader), textPlain)
+	Equal(t, w.Body.String(), "xml: unsupported type: func()\n")
 }
