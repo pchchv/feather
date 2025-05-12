@@ -1,6 +1,7 @@
 package feather
 
 import (
+	"encoding/xml"
 	"io"
 	"mime"
 	"net"
@@ -13,14 +14,20 @@ import (
 )
 
 const (
-	UTF8                   = "utf-8"
-	charsetUTF8            = "; charset=" + UTF8
-	textMarkdown           = textMarkdownNoCharset + charsetUTF8
-	textMarkdownNoCharset  = "text/markdown"
-	applicationOctetStream = "application/octet-stream"
+	utf8                    = "utf-8"
+	charsetUTF8             = "; charset=" + utf8
+	textMarkdown            = textMarkdownNoCharset + charsetUTF8
+	textMarkdownNoCharset   = "text/markdown"
+	applicationOctetStream  = "application/octet-stream"
+	applicationXMLNoCharset = "application/xml"
+	applicationXML          = applicationXMLNoCharset + charsetUTF8
 )
 
-var DefaultFormEncoder FormEncoder = form.NewEncoder()
+var (
+	DefaultFormEncoder FormEncoder = form.NewEncoder()
+
+	xmlHeaderBytes = []byte(xml.Header)
+)
 
 // FormEncoder is the type used for encoding form data
 type FormEncoder interface {
@@ -147,6 +154,33 @@ func ClientIP(r *http.Request) (clientIP string) {
 	}
 
 	clientIP, _, _ = net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+	return
+}
+
+// XML marshals provided interface + returns XML + status code.
+func XML(w http.ResponseWriter, status int, i interface{}) error {
+	b, err := xml.Marshal(i)
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set(contentTypeHeader, applicationXML)
+	w.WriteHeader(status)
+	if _, err = w.Write(xmlHeaderBytes); err == nil {
+		_, err = w.Write(b)
+	}
+
+	return err
+}
+
+// XMLBytes returns provided XML response with status code.
+func XMLBytes(w http.ResponseWriter, status int, b []byte) (err error) {
+	w.Header().Set(contentTypeHeader, applicationXML)
+	w.WriteHeader(status)
+	if _, err = w.Write(xmlHeaderBytes); err == nil {
+		_, err = w.Write(b)
+	}
+
 	return
 }
 
