@@ -1,6 +1,7 @@
 package feather
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"io"
 	"mime"
@@ -14,15 +15,17 @@ import (
 )
 
 const (
-	applicationXML          = applicationXMLNoCharset + charsetUTF8
-	applicationOctetStream  = "application/octet-stream"
-	applicationXMLNoCharset = "application/xml"
-	charsetUTF8             = "; charset=" + utf8
-	textPlain               = textPlainNoCharset + charsetUTF8
-	textMarkdown            = textMarkdownNoCharset + charsetUTF8
-	textPlainNoCharset      = "text/plain"
-	textMarkdownNoCharset   = "text/markdown"
-	utf8                    = "utf-8"
+	applicationOctetStream   = "application/octet-stream"
+	applicationJSON          = applicationJSONNoCharset + charsetUTF8
+	applicationJSONNoCharset = "application/json"
+	applicationXML           = applicationXMLNoCharset + charsetUTF8
+	applicationXMLNoCharset  = "application/xml"
+	charsetUTF8              = "; charset=" + utf8
+	textPlain                = textPlainNoCharset + charsetUTF8
+	textPlainNoCharset       = "text/plain"
+	textMarkdown             = textMarkdownNoCharset + charsetUTF8
+	textMarkdownNoCharset    = "text/markdown"
+	utf8                     = "utf-8"
 )
 
 var (
@@ -184,6 +187,37 @@ func XMLBytes(w http.ResponseWriter, status int, b []byte) (err error) {
 	}
 
 	return
+}
+
+// JSON marshals provided interface + returns JSON + status code.
+func JSON(w http.ResponseWriter, status int, i interface{}) error {
+	b, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set(contentTypeHeader, applicationJSON)
+	w.WriteHeader(status)
+	_, err = w.Write(b)
+	return err
+}
+
+// JSONP sends a JSONP response with status code and uses `callback` to construct the JSONP payload.
+func JSONP(w http.ResponseWriter, status int, i interface{}, callback string) error {
+	b, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set(contentTypeHeader, applicationJSON)
+	w.WriteHeader(status)
+	if _, err = w.Write([]byte(callback + "(")); err == nil {
+		if _, err = w.Write(b); err == nil {
+			_, err = w.Write([]byte(");"))
+		}
+	}
+
+	return err
 }
 
 func detectContentType(filename string) string {
