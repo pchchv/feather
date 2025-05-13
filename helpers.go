@@ -29,6 +29,8 @@ const (
 	charsetUTF8              = "; charset=" + utf8
 	gzipVal                  = "gzip"
 	multipartForm            = "multipart/form-data"
+	nakedApplicationXML      = "application/xml"
+	nakedApplicationJSON     = "application/json"
 	textPlain                = textPlainNoCharset + charsetUTF8
 	textPlainNoCharset       = "text/plain"
 	textMarkdown             = textMarkdownNoCharset + charsetUTF8
@@ -365,6 +367,37 @@ func DecodeQueryParams(r *http.Request, qp QueryParamsOption, v interface{}) err
 	return DefaultFormDecoder.Decode(v, QueryParams(r, qp))
 }
 
+// Decode takes the request and attempts to discover it's content type via the
+// http headers and then decode the request body into the provided struct.
+// Example if header was "application/json" would decode using json.NewDecoder(ioext.LimitReader(r.Body, maxMemory)).Decode(v).
+//
+// NOTE: when qp=QueryParams both query params and SEO query params will be parsed and included
+// e. g. route /user/:id?test=true both 'id' and 'test' are treated as query params and added to the
+// request.Form prior to decoding or added to parsed JSON or XML.
+// SEO query params are treated just like normal query params.
+func Decode(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) (err error) {
+	typ := r.Header.Get(contentTypeHeader)
+	if idx := strings.Index(typ, ";"); idx != -1 {
+		typ = typ[:idx]
+	}
+
+	switch typ {
+	case applicationForm:
+		err = DecodeForm(r, qp, v)
+	case multipartForm:
+		err = DecodeMultipartForm(r, qp, maxMemory, v)
+	default:
+		if qp == httpQueryParams {
+			if err = DecodeSEOQueryParams(r, v); err != nil {
+				return
+			}
+		}
+		err = decode(r, qp, maxMemory, v)
+	}
+
+	return
+}
+
 func detectContentType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if t := mime.TypeByExtension(ext); t != "" {
@@ -428,3 +461,26 @@ func decodeJSON(headers http.Header, body io.Reader, qp QueryParamsOption, value
 	return
 }
 
+func decode(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) (err error) {
+	typ := r.Header.Get(contentTypeHeader)
+	if idx := strings.Index(typ, ";"); idx != -1 {
+		typ = typ[:idx]
+	}
+
+	switch typ {
+	case nakedApplicationJSON:
+		err = DecodeJSON(r, qp, maxMemory, v)
+	case nakedApplicationXML:
+		err = DecodeXML(r, qp, maxMemory, v)
+	case applicationForm:
+		err = DecodeForm(r, qp, v)
+	case multipartForm:
+		err = DecodeMultipartForm(r, qp, maxMemory, v)
+	default:
+		if qp == httpQueryParams {
+			err = DecodeQueryParams(r, qp, v)
+		}
+	}
+
+	return
+}
