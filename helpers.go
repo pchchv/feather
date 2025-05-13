@@ -20,7 +20,7 @@ type QueryParamsOption uint8
 const (
 	httpQueryParams QueryParamsOption = iota
 	noQueryParams
-
+	applicationForm          = "application/x-www-form-urlencoded"
 	applicationOctetStream   = "application/octet-stream"
 	applicationJSON          = applicationJSONNoCharset + charsetUTF8
 	applicationJSONNoCharset = "application/json"
@@ -28,6 +28,7 @@ const (
 	applicationXMLNoCharset  = "application/xml"
 	charsetUTF8              = "; charset=" + utf8
 	gzipVal                  = "gzip"
+	multipartForm            = "multipart/form-data"
 	textPlain                = textPlainNoCharset + charsetUTF8
 	textPlainNoCharset       = "text/plain"
 	textMarkdown             = textMarkdownNoCharset + charsetUTF8
@@ -236,6 +237,23 @@ func JSONStream(w http.ResponseWriter, status int, i interface{}) error {
 	return json.NewEncoder(w).Encode(i)
 }
 
+// QueryParams returns the r.URL.Query() values and optionally have them include the
+// SEO query params eg. route /users/:id?test=val if qp=QueryParams then
+// values will include 'id' as well as 'test' values.
+func QueryParams(r *http.Request, qp QueryParamsOption) (values url.Values) {
+	values = r.URL.Query()
+	if qp == httpQueryParams {
+		if rvi := r.Context().Value(defaultContextIdentifier); rvi != nil {
+			rv := rvi.(*requestVars)
+			for _, p := range rv.params {
+				values.Add(p.key, p.value)
+			}
+		}
+	}
+
+	return
+}
+
 // DecodeMultipartForm parses the requests form data into the provided struct.
 //
 // The Content-Type and http method are not checked.
@@ -335,6 +353,16 @@ func DecodeJSON(r *http.Request, qp QueryParamsOption, maxMemory int64, v interf
 	}
 
 	return decodeJSON(r.Header, r.Body, qp, values, maxMemory, v)
+}
+
+// DecodeQueryParams takes the URL Query params,
+// adds SEO params or not based on the includeSEOQueryParams flag.
+//
+// NOTE: DecodeQueryParams is also used/called from Decode when
+// no contentTypeHeader is specified the only difference is that
+// it will always decode SEO Query Params.
+func DecodeQueryParams(r *http.Request, qp QueryParamsOption, v interface{}) error {
+	return DefaultFormDecoder.Decode(v, QueryParams(r, qp))
 }
 
 func detectContentType(filename string) string {
