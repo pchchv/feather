@@ -10,8 +10,6 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
-
-	"github.com/pchchv/form"
 )
 
 // QueryParamsOption represents the options for
@@ -35,16 +33,7 @@ const (
 	utf8                     = "utf-8"
 )
 
-var (
-	DefaultFormEncoder FormEncoder = form.NewEncoder()
-
-	xmlHeaderBytes = []byte(xml.Header)
-)
-
-// FormEncoder is the type used for encoding form data
-type FormEncoder interface {
-	Encode(interface{}) (url.Values, error)
-}
+var xmlHeaderBytes = []byte(xml.Header)
 
 // RequestVars returns the request scoped variables tracked by feather.
 func RequestVars(r *http.Request) ReqVars {
