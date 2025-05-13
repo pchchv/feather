@@ -2,13 +2,16 @@ package feather
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"encoding/xml"
 	"io"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -437,4 +440,239 @@ func TestDecodeQueryParams(t *testing.T) {
 
 	Equal(t, w.Code, http.StatusOK)
 	Equal(t, test.ID, 14)
+}
+
+func TestDecode(t *testing.T) {
+	type TestStruct struct {
+		ID              int `form:"id"`
+		Posted          string
+		MultiPartPosted string
+	}
+
+	test := new(TestStruct)
+	p := New()
+	p.Post("/decode-noquery/:id", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, noQueryParams, 16<<10, test)
+		Equal(t, err, nil)
+	})
+	p.Post("/decode/:id", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, httpQueryParams, 16<<10, test)
+		Equal(t, err, nil)
+	})
+	p.Post("/decode2/:id", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, noQueryParams, 16<<10, test)
+		Equal(t, err, nil)
+	})
+	p.Post("/decode3/:id", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, httpQueryParams, 16<<10, test)
+		Equal(t, err, nil)
+	})
+	p.Get("/parse-params/:Posted", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, httpQueryParams, 16<<10, test)
+		Equal(t, err, nil)
+	})
+
+	hf := p.Serve()
+	r, _ := http.NewRequest(http.MethodGet, "/parse-params/pval?id=5", nil)
+	w := httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 5)
+	Equal(t, test.Posted, "pval")
+	Equal(t, test.MultiPartPosted, "")
+
+	form := url.Values{}
+	form.Add("Posted", "value")
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/14?id=13", strings.NewReader(form.Encode()))
+	r.Header.Set(contentTypeHeader, applicationForm)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 13)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "")
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/14", strings.NewReader(form.Encode()))
+	r.Header.Set(contentTypeHeader, applicationForm)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 14)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "")
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode2/13", strings.NewReader(form.Encode()))
+	r.Header.Set(contentTypeHeader, applicationForm)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 0)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "")
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	err := writer.WriteField("MultiPartPosted", "value")
+	Equal(t, err, nil)
+
+	err = writer.Close()
+	Equal(t, err, nil)
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/13?id=12", body)
+	r.Header.Set(contentTypeHeader, writer.FormDataContentType())
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 12)
+	Equal(t, test.Posted, "")
+	Equal(t, test.MultiPartPosted, "value")
+
+	body = &bytes.Buffer{}
+	writer = multipart.NewWriter(body)
+	err = writer.WriteField("MultiPartPosted", "value")
+	Equal(t, err, nil)
+
+	err = writer.Close()
+	Equal(t, err, nil)
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode2/13", body)
+	r.Header.Set(contentTypeHeader, writer.FormDataContentType())
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 0)
+	Equal(t, test.Posted, "")
+	Equal(t, test.MultiPartPosted, "value")
+
+	body = &bytes.Buffer{}
+	writer = multipart.NewWriter(body)
+	err = writer.WriteField("MultiPartPosted", "value")
+	Equal(t, err, nil)
+
+	err = writer.Close()
+	Equal(t, err, nil)
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode3/11", body)
+	r.Header.Set(contentTypeHeader, writer.FormDataContentType())
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 11)
+	Equal(t, test.Posted, "")
+	Equal(t, test.MultiPartPosted, "value")
+
+	jsonBody := `{"ID":13,"Posted":"value","MultiPartPosted":"value"}`
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/13", strings.NewReader(jsonBody))
+	r.Header.Set(contentTypeHeader, applicationJSON)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 13)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "value")
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/13?id=14", strings.NewReader(jsonBody))
+	r.Header.Set(contentTypeHeader, applicationJSON)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 14)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "value")
+
+	var buff bytes.Buffer
+	gzw := gzip.NewWriter(&buff)
+	defer func() {
+		_ = gzw.Close()
+	}()
+	_, err = gzw.Write([]byte(jsonBody))
+	Equal(t, err, nil)
+
+	err = gzw.Close()
+	Equal(t, err, nil)
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/13?id=14", &buff)
+	r.Header.Set(contentTypeHeader, applicationJSON)
+	r.Header.Set(acceptEncodingHeader, "gzip")
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 14)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "value")
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode-noquery/13?id=14", strings.NewReader(jsonBody))
+	r.Header.Set(contentTypeHeader, applicationJSON)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 13)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "value")
+
+	xmlBody := `<TestStruct><ID>13</ID><Posted>value</Posted><MultiPartPosted>value</MultiPartPosted></TestStruct>`
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/13", strings.NewReader(xmlBody))
+	r.Header.Set(contentTypeHeader, applicationXML)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 13)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "value")
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode/13?id=14", strings.NewReader(xmlBody))
+	r.Header.Set(contentTypeHeader, applicationXML)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 14)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "value")
+
+	test = new(TestStruct)
+	r, _ = http.NewRequest(http.MethodPost, "/decode-noquery/13?id=14", strings.NewReader(xmlBody))
+	r.Header.Set(contentTypeHeader, applicationXML)
+	w = httptest.NewRecorder()
+
+	hf.ServeHTTP(w, r)
+
+	Equal(t, w.Code, http.StatusOK)
+	Equal(t, test.ID, 13)
+	Equal(t, test.Posted, "value")
+	Equal(t, test.MultiPartPosted, "value")
 }
