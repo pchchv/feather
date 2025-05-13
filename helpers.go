@@ -18,8 +18,8 @@ import (
 type QueryParamsOption uint8
 
 const (
-	QueryParams QueryParamsOption = iota
-	NoQueryParams
+	httpQueryParams QueryParamsOption = iota
+	noQueryParams
 
 	applicationOctetStream   = "application/octet-stream"
 	applicationJSON          = applicationJSONNoCharset + charsetUTF8
@@ -244,7 +244,7 @@ func JSONStream(w http.ResponseWriter, status int, i interface{}) error {
 // e.g. the route /user/:id?test=true both 'id' and 'test' are treated as query parameters and added to request.Form prior to decoding.
 // SEO query params are treated just like normal query params.
 func DecodeMultipartForm(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) (err error) {
-	if qp == QueryParams {
+	if qp == httpQueryParams {
 		if err = ParseMultipartForm(r, maxMemory); err != nil {
 			return
 		}
@@ -252,9 +252,9 @@ func DecodeMultipartForm(r *http.Request, qp QueryParamsOption, maxMemory int64,
 
 	if err = r.ParseMultipartForm(maxMemory); err == nil {
 		switch qp {
-		case QueryParams:
+		case httpQueryParams:
 			err = DefaultFormDecoder.Decode(v, r.Form)
-		case NoQueryParams:
+		case noQueryParams:
 			err = DefaultFormDecoder.Decode(v, r.MultipartForm.Value)
 		}
 	}
@@ -285,7 +285,7 @@ func DecodeSEOQueryParams(r *http.Request, v interface{}) (err error) {
 // e.g. the route /user/:id?test=true both 'id' and 'test' are treated as query parameters and added to request.Form prior to decoding.
 // SEO query params are treated just like normal query params.
 func DecodeForm(r *http.Request, qp QueryParamsOption, v interface{}) (err error) {
-	if qp == QueryParams {
+	if qp == httpQueryParams {
 		if err = ParseForm(r); err != nil {
 			return
 		}
@@ -293,9 +293,9 @@ func DecodeForm(r *http.Request, qp QueryParamsOption, v interface{}) (err error
 
 	if err = r.ParseForm(); err == nil {
 		switch qp {
-		case QueryParams:
+		case httpQueryParams:
 			err = DefaultFormDecoder.Decode(v, r.Form)
-		case NoQueryParams:
+		case noQueryParams:
 			err = DefaultFormDecoder.Decode(v, r.PostForm)
 		}
 	}
@@ -313,7 +313,7 @@ func DecodeForm(r *http.Request, qp QueryParamsOption, v interface{}) (err error
 // SEO query params are treated just like normal query params.
 func DecodeXML(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) error {
 	var values url.Values
-	if qp == QueryParams {
+	if qp == httpQueryParams {
 		values = r.URL.Query()
 	}
 
@@ -330,7 +330,7 @@ func DecodeXML(r *http.Request, qp QueryParamsOption, maxMemory int64, v interfa
 // SEO query params are treated just like normal query params.
 func DecodeJSON(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) error {
 	var values url.Values
-	if qp == QueryParams {
+	if qp == httpQueryParams {
 		values = r.URL.Query()
 	}
 
@@ -371,7 +371,7 @@ func decodeXML(headers http.Header, body io.Reader, qp QueryParamsOption, values
 	}
 
 	err = xml.NewDecoder(LimitReader(body, maxMemory)).Decode(v)
-	if qp == QueryParams && err == nil {
+	if qp == httpQueryParams && err == nil {
 		err = decodeQueryParams(values, v)
 	}
 
@@ -393,7 +393,7 @@ func decodeJSON(headers http.Header, body io.Reader, qp QueryParamsOption, value
 	}
 
 	err = json.NewDecoder(LimitReader(body, maxMemory)).Decode(v)
-	if qp == QueryParams && err == nil {
+	if qp == httpQueryParams && err == nil {
 		err = decodeQueryParams(values, v)
 	}
 
