@@ -14,7 +14,14 @@ import (
 	"github.com/pchchv/form"
 )
 
+// QueryParamsOption represents the options for
+// including query parameters during Decode helper functions.
+type QueryParamsOption uint8
+
 const (
+	QueryParams QueryParamsOption = iota
+	NoQueryParams
+
 	applicationOctetStream   = "application/octet-stream"
 	applicationJSON          = applicationJSONNoCharset + charsetUTF8
 	applicationJSONNoCharset = "application/json"
