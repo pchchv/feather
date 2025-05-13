@@ -234,6 +234,47 @@ func JSONStream(w http.ResponseWriter, status int, i interface{}) error {
 	return json.NewEncoder(w).Encode(i)
 }
 
+// DecodeMultipartForm parses the requests form data into the provided struct.
+//
+// The Content-Type and http method are not checked.
+//
+// NOTE: when qp=QueryParams, both query parameters and SEO query parameters will be parsed and included,
+// e.g. the route /user/:id?test=true both 'id' and 'test' are treated as query parameters and added to request.Form prior to decoding.
+// SEO query params are treated just like normal query params.
+func DecodeMultipartForm(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) (err error) {
+	if qp == QueryParams {
+		if err = ParseMultipartForm(r, maxMemory); err != nil {
+			return
+		}
+	}
+
+	if err = r.ParseMultipartForm(maxMemory); err == nil {
+		switch qp {
+		case QueryParams:
+			err = DefaultFormDecoder.Decode(v, r.Form)
+		case NoQueryParams:
+			err = DefaultFormDecoder.Decode(v, r.MultipartForm.Value)
+		}
+	}
+
+	return
+}
+
+// DecodeSEOQueryParams decodes the SEO Query params only and ignores the normal URL Query params.
+func DecodeSEOQueryParams(r *http.Request, v interface{}) (err error) {
+	if rvi := r.Context().Value(defaultContextIdentifier); rvi != nil {
+		rv := rvi.(*requestVars)
+		values := make(url.Values, len(rv.params))
+		for _, p := range rv.params {
+			values.Add(p.key, p.value)
+		}
+
+		err = DefaultFormDecoder.Decode(v, values)
+	}
+
+	return
+}
+
 func detectContentType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if t := mime.TypeByExtension(ext); t != "" {
