@@ -320,6 +320,23 @@ func DecodeXML(r *http.Request, qp QueryParamsOption, maxMemory int64, v interfa
 	return decodeXML(r.Header, r.Body, qp, values, maxMemory, v)
 }
 
+// DecodeJSON decodes the request body into the provided struct and limits the
+// request size via an ioext.LimitReader using the maxMemory param.
+//
+// The Content-Type e.g. "application/json" and http method are not checked.
+//
+// NOTE: when qp=QueryParams both query params and SEO query params will be parsed and included
+// e. g. route /user/:id?test=true both 'id' and 'test' are treated as query params and added to parsed JSON.
+// SEO query params are treated just like normal query params.
+func DecodeJSON(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) error {
+	var values url.Values
+	if qp == QueryParams {
+		values = r.URL.Query()
+	}
+
+	return decodeJSON(r.Header, r.Body, qp, values, maxMemory, v)
+}
+
 func detectContentType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if t := mime.TypeByExtension(ext); t != "" {
@@ -360,3 +377,26 @@ func decodeXML(headers http.Header, body io.Reader, qp QueryParamsOption, values
 
 	return
 }
+
+func decodeJSON(headers http.Header, body io.Reader, qp QueryParamsOption, values url.Values, maxMemory int64, v interface{}) (err error) {
+	if encoding := headers.Get(contentEncodingHeader); encoding == gzipVal {
+		var gzr *gzip.Reader
+		gzr, err = gzip.NewReader(body)
+		if err != nil {
+			return
+		}
+
+		defer func() {
+			_ = gzr.Close()
+		}()
+		body = gzr
+	}
+
+	err = json.NewDecoder(LimitReader(body, maxMemory)).Decode(v)
+	if qp == QueryParams && err == nil {
+		err = decodeQueryParams(values, v)
+	}
+
+	return
+}
+
