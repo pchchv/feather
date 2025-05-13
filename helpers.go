@@ -277,6 +277,49 @@ func DecodeSEOQueryParams(r *http.Request, v interface{}) (err error) {
 	return
 }
 
+// DecodeForm parses the requests form data into the provided struct.
+//
+// The Content-Type and http method are not checked.
+//
+// NOTE: when qp=QueryParams, both query parameters and SEO query parameters will be parsed and included,
+// e.g. the route /user/:id?test=true both 'id' and 'test' are treated as query parameters and added to request.Form prior to decoding.
+// SEO query params are treated just like normal query params.
+func DecodeForm(r *http.Request, qp QueryParamsOption, v interface{}) (err error) {
+	if qp == QueryParams {
+		if err = ParseForm(r); err != nil {
+			return
+		}
+	}
+
+	if err = r.ParseForm(); err == nil {
+		switch qp {
+		case QueryParams:
+			err = DefaultFormDecoder.Decode(v, r.Form)
+		case NoQueryParams:
+			err = DefaultFormDecoder.Decode(v, r.PostForm)
+		}
+	}
+
+	return
+}
+
+// DecodeXML decodes the request body into the provided struct and limits the
+// request size via an ioext.LimitReader using the maxMemory param.
+//
+// The Content-Type e.g. "application/xml" and http method are not checked.
+//
+// NOTE: when qp=QueryParams both query params and SEO query params will be parsed and included
+// e. g. route /user/:id?test=true both 'id' and 'test' are treated as query params and added to parsed XML.
+// SEO query params are treated just like normal query params.
+func DecodeXML(r *http.Request, qp QueryParamsOption, maxMemory int64, v interface{}) error {
+	var values url.Values
+	if qp == QueryParams {
+		values = r.URL.Query()
+	}
+
+	return decodeXML(r.Header, r.Body, qp, values, maxMemory, v)
+}
+
 func detectContentType(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if t := mime.TypeByExtension(ext); t != "" {
