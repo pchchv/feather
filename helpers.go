@@ -1,6 +1,7 @@
 package feather
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"encoding/xml"
 	"io"
@@ -26,6 +27,7 @@ const (
 	applicationXML           = applicationXMLNoCharset + charsetUTF8
 	applicationXMLNoCharset  = "application/xml"
 	charsetUTF8              = "; charset=" + utf8
+	gzipVal                  = "gzip"
 	textPlain                = textPlainNoCharset + charsetUTF8
 	textPlainNoCharset       = "text/plain"
 	textMarkdown             = textMarkdownNoCharset + charsetUTF8
@@ -287,4 +289,31 @@ func detectContentType(filename string) string {
 	default:
 		return applicationOctetStream
 	}
+}
+
+func decodeQueryParams(values url.Values, v interface{}) error {
+	return DefaultFormDecoder.Decode(v, values)
+}
+
+func decodeXML(headers http.Header, body io.Reader, qp QueryParamsOption, values url.Values, maxMemory int64, v interface{}) (err error) {
+	if encoding := headers.Get(contentEncodingHeader); encoding == gzipVal {
+		var gzr *gzip.Reader
+		gzr, err = gzip.NewReader(body)
+		if err != nil {
+			return
+		}
+
+		defer func() {
+			_ = gzr.Close()
+		}()
+
+		body = gzr
+	}
+
+	err = xml.NewDecoder(LimitReader(body, maxMemory)).Decode(v)
+	if qp == QueryParams && err == nil {
+		err = decodeQueryParams(values, v)
+	}
+
+	return
 }
