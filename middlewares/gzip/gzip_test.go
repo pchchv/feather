@@ -3,6 +3,7 @@ package gzip
 import (
 	"bufio"
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
 	"io"
 	"net"
@@ -78,6 +79,52 @@ func TestGzipHijack(t *testing.T) {
 func TestGzip(t *testing.T) {
 	p := feather.New()
 	p.Use(Gzip)
+	p.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("test"))
+	})
+	p.Get("/empty", func(w http.ResponseWriter, r *http.Request) {
+	})
+
+	server := httptest.NewServer(p.Serve())
+	defer server.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, server.URL+"/test", nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+	b, err := io.ReadAll(resp.Body)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, string(b), "test")
+
+	req, _ = http.NewRequest(http.MethodGet, server.URL+"/test", nil)
+	req.Header.Set(acceptEncodingHeader, "gzip")
+	resp, err = client.Do(req)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	assert.Equal(t, resp.Header.Get(contentEncodingHeader), gzipVal)
+	assert.Equal(t, resp.Header.Get(contentTypeHeader), textPlain)
+
+	r, err := gzip.NewReader(resp.Body)
+	assert.Equal(t, err, nil)
+	defer r.Close()
+
+	b, err = io.ReadAll(r)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, string(b), "test")
+
+	req, _ = http.NewRequest(http.MethodGet, server.URL+"/empty", nil)
+	resp, err = client.Do(req)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+}
+
+func TestGzipLevel(t *testing.T) {
+	// bad gzip level
+	assert.PanicMatches(t, func() { GzipLevel(999) }, "gzip: invalid compression level: 999")
+	p := feather.New()
+	p.Use(GzipLevel(flate.BestCompression))
 	p.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("test"))
 	})
