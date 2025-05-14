@@ -5,7 +5,14 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 )
+
+var lrpool = sync.Pool{
+	New: func() interface{} {
+		return new(logWriter)
+	},
+}
 
 type logWriter struct {
 	http.ResponseWriter
@@ -53,4 +60,10 @@ func (lw *logWriter) Status() int {
 // Hijack hijacks the current http connection.
 func (lw *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return lw.ResponseWriter.(http.Hijacker).Hijack()
+}
+
+// HandlePanic handles graceful panic by redirecting to friendly error page or rendering a friendly error page.
+// trace passed just in case you want rendered to developer when not running in production.
+func HandlePanic(w http.ResponseWriter, r *http.Request, trace []byte) {
+	// redirect to or directly render friendly error page
 }
