@@ -1,6 +1,10 @@
 package gzip
 
-import "net/http/httptest"
+import (
+	"bufio"
+	"net"
+	"net/http/httptest"
+)
 
 type closeNotifyingRecorder struct {
 	*httptest.ResponseRecorder
@@ -12,4 +16,10 @@ func newCloseNotifyingRecorder() *closeNotifyingRecorder {
 		httptest.NewRecorder(),
 		make(chan bool, 1),
 	}
+}
+
+func (c *closeNotifyingRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	reader := bufio.NewReader(c.Body)
+	writer := bufio.NewWriter(c.Body)
+	return nil, bufio.NewReadWriter(reader, writer), nil
 }
