@@ -23,3 +23,11 @@ func (c *closeNotifyingRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	writer := bufio.NewWriter(c.Body)
 	return nil, bufio.NewReadWriter(reader, writer), nil
 }
+
+func (c *closeNotifyingRecorder) Close() {
+	c.closed <- true
+}
+
+func (c *closeNotifyingRecorder) CloseNotify() <-chan bool {
+	return c.closed
+}
