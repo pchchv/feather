@@ -4,10 +4,12 @@ import (
 	"net/http"
 
 	"github.com/pchchv/feather"
+	lr "github.com/pchchv/feather/examples/middleware/logging_recovery"
 )
 
 func main() {
 	p := feather.New()
+	p.Use(lr.LoggingAndRecovery(false))
 	p.Get("/", helloWorld)
 	http.ListenAndServe(":3007", p.Serve())
 }
