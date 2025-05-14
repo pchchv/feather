@@ -21,3 +21,15 @@ func (w *gzipWriter) Flush() error {
 func (w *gzipWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
 }
+
+func (w *gzipWriter) Write(b []byte) (int, error) {
+	if !w.sniffComplete {
+		if w.Header().Get("Content-Type") == "" {
+			w.Header().Set("Content-Type", http.DetectContentType(b))
+		}
+
+		w.sniffComplete = true
+	}
+
+	return w.Writer.Write(b)
+}
