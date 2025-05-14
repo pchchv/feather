@@ -15,6 +15,7 @@ const (
 	acceptEncodingHeader  = "Accept-Encoding"
 	contentTypeHeader     = "Content-Type"
 	varyHeader            = "Vary"
+	textPlain             = "text/plain" + "; charset=" + "utf-8"
 	gzipVal               = "gzip"
 )
 
