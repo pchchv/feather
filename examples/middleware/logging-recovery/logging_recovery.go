@@ -5,7 +5,26 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"runtime"
 	"sync"
+	"time"
+
+	"github.com/pchchv/feather"
+)
+
+const (
+	// ANSI
+	reset     = "\x1b[0m"
+	red       = "\x1b[31m"
+	blink     = "\x1b[5m"
+	green     = "\x1b[32m"
+	yellow    = "\x1b[33m"
+	underline = "\x1b[4m"
+
+	status    = green
+	status300 = yellow
+	status400 = red
+	status500 = underline + blink + red
 )
 
 var lrpool = sync.Pool{
@@ -66,4 +85,71 @@ func (lw *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // trace passed just in case you want rendered to developer when not running in production.
 func HandlePanic(w http.ResponseWriter, r *http.Request, trace []byte) {
 	// redirect to or directly render friendly error page
+}
+
+// LoggingAndRecovery handle HTTP request logging + recovery.
+func LoggingAndRecovery(color bool) feather.Middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		if color {
+			return func(w http.ResponseWriter, r *http.Request) {
+				t1 := time.Now()
+				lw := lrpool.Get().(*logWriter)
+				lw.status = 200
+				lw.size = 0
+				lw.committed = false
+				lw.ResponseWriter = w
+				defer func() {
+					if err := recover(); err != nil {
+						trace := make([]byte, 1<<16)
+						n := runtime.Stack(trace, true)
+						log.Printf(" %srecovering from panic: %+v\nStack Trace:\n %s%s", red, err, trace[:n], reset)
+						HandlePanic(lw, r, trace[:n])
+						lrpool.Put(lw)
+						return
+					}
+
+					lrpool.Put(lw)
+				}()
+
+				next(lw, r)
+
+				color := status
+				code := lw.Status()
+				switch {
+				case code >= http.StatusInternalServerError:
+					color = status500
+				case code >= http.StatusBadRequest:
+					color = status400
+				case code >= http.StatusMultipleChoices:
+					color = status300
+				}
+
+				log.Printf("%s %d %s[%s%s%s] %q %v %d\n", color, code, reset, color, r.Method, reset, r.URL, time.Since(t1), lw.Size())
+			}
+		}
+
+		return func(w http.ResponseWriter, r *http.Request) {
+			t1 := time.Now()
+			lw := lrpool.Get().(*logWriter)
+			lw.status = 200
+			lw.size = 0
+			lw.committed = false
+			lw.ResponseWriter = w
+			defer func() {
+				if err := recover(); err != nil {
+					trace := make([]byte, 1<<16)
+					n := runtime.Stack(trace, true)
+					log.Printf(" %srecovering from panic: %+v\nStack Trace:\n %s%s", red, err, trace[:n], reset)
+					HandlePanic(lw, r, trace[:n])
+				}
+
+				lrpool.Put(lw)
+			}()
+
+			next(lw, r)
+
+			log.Printf("%d [%s] %q %v %d\n", lw.Status(), r.Method, r.URL, time.Since(t1), lw.Size())
+		}
+
+	}
 }
