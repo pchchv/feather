@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/pchchv/feather"
 )
 
 const (
@@ -77,5 +79,50 @@ func Gzip(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		next(w, r)
+	}
+}
+
+// GzipLevel returns a middleware that compresses the HTTP response using the
+// gzip compression scheme with the specified level.
+func GzipLevel(level int) feather.Middleware {
+	// test gzip level,
+	// then don't have to each time one is created in the pool
+	if _, err := gzip.NewWriterLevel(io.Discard, level); err != nil {
+		panic(err)
+	}
+
+	var gzipPool = sync.Pool{
+		New: func() interface{} {
+			z, _ := gzip.NewWriterLevel(io.Discard, level)
+			return &gzipWriter{Writer: z}
+		},
+	}
+
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add(varyHeader, acceptEncodingHeader)
+			if strings.Contains(r.Header.Get(acceptEncodingHeader), gzipVal) {
+				gz := gzipPool.Get().(*gzipWriter)
+				gz.sniffComplete = false
+				gzr := gz.Writer.(*gzip.Writer)
+				gzr.Reset(w)
+				gz.ResponseWriter = w
+				w.Header().Set(contentEncodingHeader, gzipVal)
+				w = gz
+				defer func() {
+					if !gz.sniffComplete {
+						// it is necessary to reset response to its
+						// pristine state where nothing is written to the body
+						w.Header().Del(contentEncodingHeader)
+						gzr.Reset(io.Discard)
+					}
+
+					gzr.Close()
+					gzipPool.Put(gz)
+				}()
+			}
+
+			next(w, r)
+		}
 	}
 }
