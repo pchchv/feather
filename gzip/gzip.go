@@ -6,7 +6,14 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 )
+
+var gzipPool = sync.Pool{
+	New: func() interface{} {
+		return &gzipWriter{Writer: gzip.NewWriter(io.Discard)}
+	},
+}
 
 type gzipWriter struct {
 	io.Writer
