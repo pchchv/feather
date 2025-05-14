@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"bufio"
 	"log"
+	"net"
 	"net/http"
 )
 
@@ -36,4 +38,19 @@ func (lw *logWriter) WriteHeader(status int) {
 	lw.status = status
 	lw.ResponseWriter.WriteHeader(status)
 	lw.committed = true
+}
+
+// Size returns the number of bytes currently written in the response.
+func (lw *logWriter) Size() int64 {
+	return lw.size
+}
+
+// Status returns the current response's http status code.
+func (lw *logWriter) Status() int {
+	return lw.status
+}
+
+// Hijack hijacks the current http connection.
+func (lw *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return lw.ResponseWriter.(http.Hijacker).Hijack()
 }
