@@ -13,6 +13,7 @@ import (
 const (
 	contentEncodingHeader = "Content-Encoding"
 	acceptEncodingHeader  = "Accept-Encoding"
+	contentTypeHeader     = "Content-Type"
 	varyHeader            = "Vary"
 	gzipVal               = "gzip"
 )
@@ -39,8 +40,8 @@ func (w *gzipWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 func (w *gzipWriter) Write(b []byte) (int, error) {
 	if !w.sniffComplete {
-		if w.Header().Get("Content-Type") == "" {
-			w.Header().Set("Content-Type", http.DetectContentType(b))
+		if w.Header().Get(contentTypeHeader) == "" {
+			w.Header().Set(contentTypeHeader, http.DetectContentType(b))
 		}
 
 		w.sniffComplete = true
