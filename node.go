@@ -17,7 +17,7 @@ type existingParams map[string]struct{}
 
 func (e existingParams) check(param string, path string) {
 	if _, ok := e[param]; ok {
-		panic("duplicate param name '" + param + "' detected for route '" + path + "'")
+		panic("Duplicate param name '" + param + "' detected for route '" + path + "'")
 	}
 
 	e[param] = struct{}{}
@@ -96,7 +96,7 @@ func (n *node) insertChild(numParams uint8, existing existingParams, path string
 			}
 		} else { // catchAll
 			if end != max || numParams > 1 {
-				panic("character after the * symbol is not permitted, path '" + fullPath + "'")
+				panic("Character after the * symbol is not permitted, path '" + fullPath + "'")
 			}
 
 			if len(n.path) > 0 && n.path[len(n.path)-1] == '/' {
@@ -361,18 +361,4 @@ walk: // outer loop for walking the tree
 		// nothing found
 		return
 	}
-}
-
-func countParams(path string) (n uint8) {
-	for i := 0; i < len(path) && n < 255; i++ {
-		if path[i] == paramByte || path[i] == wildByte {
-			n++
-		}
-	}
-
-	if n >= 255 {
-		panic("too many parameters defined in path, max is 255")
-	}
-
-	return uint8(n)
 }

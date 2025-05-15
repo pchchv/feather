@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/pchchv/feather"
-	"github.com/pchchv/feather/assert"
+	. "github.com/pchchv/feather/assert"
 )
 
 type closeNotifyingRecorder struct {
@@ -46,23 +46,23 @@ func TestGzipFlush(t *testing.T) {
 	buff := new(bytes.Buffer)
 	w := gzip.NewWriter(buff)
 	gw := gzipWriter{Writer: w, ResponseWriter: rec}
-	assert.Equal(t, buff.Len(), 0)
+	Equal(t, buff.Len(), 0)
 
 	err := gw.Flush()
-	assert.Equal(t, err, nil)
+	Equal(t, err, nil)
 
 	n1 := buff.Len()
-	assert.NotEqual(t, n1, 0)
+	NotEqual(t, n1, 0)
 
 	_, err = gw.Write([]byte("x"))
-	assert.Equal(t, err, nil)
+	Equal(t, err, nil)
 
 	n2 := buff.Len()
-	assert.Equal(t, n1, n2)
+	Equal(t, n1, n2)
 
 	err = gw.Flush()
-	assert.Equal(t, err, nil)
-	assert.NotEqual(t, n2, buff.Len())
+	Equal(t, err, nil)
+	NotEqual(t, n2, buff.Len())
 }
 
 func TestGzipHijack(t *testing.T) {
@@ -71,7 +71,7 @@ func TestGzipHijack(t *testing.T) {
 	w := gzip.NewWriter(buf)
 	gw := gzipWriter{Writer: w, ResponseWriter: rec}
 	_, bufrw, err := gw.Hijack()
-	assert.Equal(t, err, nil)
+	Equal(t, err, nil)
 
 	_, _ = bufrw.WriteString("test")
 }
@@ -91,38 +91,38 @@ func TestGzip(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, server.URL+"/test", nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	Equal(t, err, nil)
+	Equal(t, resp.StatusCode, http.StatusOK)
 
 	b, err := io.ReadAll(resp.Body)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, string(b), "test")
+	Equal(t, err, nil)
+	Equal(t, string(b), "test")
 
 	req, _ = http.NewRequest(http.MethodGet, server.URL+"/test", nil)
 	req.Header.Set(acceptEncodingHeader, "gzip")
 	resp, err = client.Do(req)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
-	assert.Equal(t, resp.Header.Get(contentEncodingHeader), gzipVal)
-	assert.Equal(t, resp.Header.Get(contentTypeHeader), textPlain)
+	Equal(t, err, nil)
+	Equal(t, resp.StatusCode, http.StatusOK)
+	Equal(t, resp.Header.Get(contentEncodingHeader), gzipVal)
+	Equal(t, resp.Header.Get(contentTypeHeader), textPlain)
 
 	r, err := gzip.NewReader(resp.Body)
-	assert.Equal(t, err, nil)
+	Equal(t, err, nil)
 	defer r.Close()
 
 	b, err = io.ReadAll(r)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, string(b), "test")
+	Equal(t, err, nil)
+	Equal(t, string(b), "test")
 
 	req, _ = http.NewRequest(http.MethodGet, server.URL+"/empty", nil)
 	resp, err = client.Do(req)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	Equal(t, err, nil)
+	Equal(t, resp.StatusCode, http.StatusOK)
 }
 
 func TestGzipLevel(t *testing.T) {
 	// bad gzip level
-	assert.PanicMatches(t, func() { GzipLevel(999) }, "gzip: invalid compression level: 999")
+	PanicMatches(t, func() { GzipLevel(999) }, "gzip: invalid compression level: 999")
 	p := feather.New()
 	p.Use(GzipLevel(flate.BestCompression))
 	p.Get("/test", func(w http.ResponseWriter, r *http.Request) {
@@ -137,31 +137,31 @@ func TestGzipLevel(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, server.URL+"/test", nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	Equal(t, err, nil)
+	Equal(t, resp.StatusCode, http.StatusOK)
 
 	b, err := io.ReadAll(resp.Body)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, string(b), "test")
+	Equal(t, err, nil)
+	Equal(t, string(b), "test")
 
 	req, _ = http.NewRequest(http.MethodGet, server.URL+"/test", nil)
-	req.Header.Set(acceptEncodingHeader, "gzip")
+	req.Header.Set(acceptEncodingHeader, gzipVal)
 	resp, err = client.Do(req)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
-	assert.Equal(t, resp.Header.Get(contentEncodingHeader), gzipVal)
-	assert.Equal(t, resp.Header.Get(contentTypeHeader), textPlain)
+	Equal(t, err, nil)
+	Equal(t, resp.StatusCode, http.StatusOK)
+	Equal(t, resp.Header.Get(contentEncodingHeader), gzipVal)
+	Equal(t, resp.Header.Get(contentTypeHeader), textPlain)
 
 	r, err := gzip.NewReader(resp.Body)
-	assert.Equal(t, err, nil)
+	Equal(t, err, nil)
 	defer r.Close()
 
 	b, err = io.ReadAll(r)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, string(b), "test")
+	Equal(t, err, nil)
+	Equal(t, string(b), "test")
 
 	req, _ = http.NewRequest(http.MethodGet, server.URL+"/empty", nil)
 	resp, err = client.Do(req)
-	assert.Equal(t, err, nil)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	Equal(t, err, nil)
+	Equal(t, resp.StatusCode, http.StatusOK)
 }
