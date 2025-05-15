@@ -51,16 +51,6 @@ func (w *gzipWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
 }
 
-func TestNoRequestVars(t *testing.T) {
-	reqVars := func(w http.ResponseWriter, r *http.Request) {
-		RequestVars(r)
-	}
-	p := New()
-	p.Get("/home", reqVars)
-	code, _ := request(http.MethodGet, "/home", p)
-	Equal(t, code, http.StatusOK)
-}
-
 // Gzip2 returns a middleware which compresses HTTP response using gzip compression scheme.
 func Gzip2(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +81,16 @@ func Gzip2(next http.HandlerFunc) http.HandlerFunc {
 
 		next(w, r)
 	}
+}
+
+func TestNoRequestVars(t *testing.T) {
+	reqVars := func(w http.ResponseWriter, r *http.Request) {
+		RequestVars(r)
+	}
+	p := New()
+	p.Get("/home", reqVars)
+	code, _ := request(http.MethodGet, "/home", p)
+	Equal(t, code, http.StatusOK)
 }
 
 func TestBadParseForm(t *testing.T) {

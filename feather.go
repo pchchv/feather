@@ -111,7 +111,7 @@ func (p urlParams) Get(key string) (param string) {
 	for i := 0; i < len(p); i++ {
 		if p[i].key == key {
 			param = p[i].value
-			break
+			return
 		}
 	}
 
@@ -224,9 +224,11 @@ func (p *Mux) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if p.automaticallyHandleOPTIONS && r.Method == http.MethodOptions {
 		if r.URL.Path == "*" { // check server-wide OPTIONS
 			for m := range p.trees {
-				if m != http.MethodOptions {
-					w.Header().Add(allowHeader, m)
+				if m == http.MethodOptions {
+					continue
 				}
+
+				w.Header().Add(allowHeader, m)
 			}
 		} else {
 			for m, ctree := range p.trees {
@@ -248,11 +250,13 @@ func (p *Mux) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if p.handleMethodNotAllowed {
 		var found bool
 		for m, ctree := range p.trees {
-			if m != r.Method {
-				if h, _ = ctree.find(r.URL.Path, p); h != nil {
-					w.Header().Add(allowHeader, m)
-					found = true
-				}
+			if m == r.Method {
+				continue
+			}
+
+			if h, _ = ctree.find(r.URL.Path, p); h != nil {
+				w.Header().Add(allowHeader, m)
+				found = true
 			}
 		}
 
