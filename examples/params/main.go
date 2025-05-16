@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/pchchv/feather"
-	lr "github.com/pchchv/feather/examples/middleware/logging_recovery"
+	lr "github.com/pchchv/feather/examples/middleware/logging-recovery"
 )
 
 func main() {
