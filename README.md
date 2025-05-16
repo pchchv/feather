@@ -1,4 +1,4 @@
-# feather [![Godoc Reference](https://pkg.go.dev/badge/github.com/pchchv/feather)](https://pkg.go.dev/github.com/pchchv/feather)
+# feather [![Go Report Card](https://goreportcard.com/badge/github.com/pchchv/feather)](https://goreportcard.com/report/github.com/pchchv/feather) [![Godoc Reference](https://pkg.go.dev/badge/github.com/pchchv/feather)](https://pkg.go.dev/github.com/pchchv/feather)
 
 Feather is a radix-tree based fast HTTP router that adheres to Go's native implementations of the `net/http` package, essentially keeping the implementation of feather handlers using the `context` package.
 
@@ -10,7 +10,7 @@ Feather is a radix-tree based fast HTTP router that adheres to Go's native imple
 # Installation
  
 ```sh
-go get github.com/pchchv/form
+go get github.com/pchchv/feather
 ```
 
 # Usage
