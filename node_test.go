@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	. "github.com/pchchv/feather/assert"
+	. "github.com/pchchv/go-assert"
 )
 
 func TestAddChain(t *testing.T) {

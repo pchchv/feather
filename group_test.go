@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	. "github.com/pchchv/feather/assert"
+	. "github.com/pchchv/go-assert"
 )
 
 func TestMatch(t *testing.T) {

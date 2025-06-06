@@ -17,7 +17,7 @@ import (
 	"sync"
 	"testing"
 
-	. "github.com/pchchv/feather/assert"
+	. "github.com/pchchv/go-assert"
 )
 
 var gzipPool = sync.Pool{

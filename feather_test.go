@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"testing"
 
-	. "github.com/pchchv/feather/assert"
+	. "github.com/pchchv/go-assert"
 )
 
 var (
