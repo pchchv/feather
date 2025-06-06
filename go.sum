@@ -1,2 +1,4 @@
 github.com/pchchv/form v1.0.0 h1:LGN1lqOuaguKu/L9EeT89+bE0JWSshgiA0BpZCLxwkQ=
 github.com/pchchv/form v1.0.0/go.mod h1:C7cSRhkPFWS3kMD6yAkG8xkLqq4m146hPkZLynJhf3U=
+github.com/pchchv/go-assert v0.0.0-20250530192653-4d6a8ce5608f h1:QIkQvAHaw0ZbfkPM2tMaIx/eyisV6xk6cPr7v6jf0gA=
+github.com/pchchv/go-assert v0.0.0-20250530192653-4d6a8ce5608f/go.mod h1:FkOAc+ewzMCGXG8pSK2d/rUEBZKMBQUXsAIQUOxXbJo=
