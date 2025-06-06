@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/pchchv/feather"
-	. "github.com/pchchv/feather/assert"
+	. "github.com/pchchv/go-assert"
 )
 
 type closeNotifyingRecorder struct {
